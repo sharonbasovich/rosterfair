@@ -8,7 +8,7 @@ Version **0.2.0** includes manual JSON save and restore. The original applicatio
 
 ## Run locally
 
-Use **Node.js 22.14 or newer** and a modern browser. Node 24 is used by CI. No account is required. No hosted app is provided.
+Use **Node.js 22.14 or newer** and a modern browser. The CI workflow targets Node 24. No account is required. No hosted app is provided.
 
 For the compiled release ZIP:
 

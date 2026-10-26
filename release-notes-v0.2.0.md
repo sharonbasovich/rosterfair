@@ -16,7 +16,7 @@ The repair policy remains explicit: maximize covered slots, then minimize change
 
 ## Run
 
-Extract the compiled ZIP and run `node server.mjs` with Node.js 22 or newer. Open **http://127.0.0.1:4173/**. The included build requires no npm installation or external runtime network connection. A source checkout needs `npm ci` and `npm run build` first. See [README.md](README.md).
+Extract the compiled ZIP and run `node server.mjs` with Node.js 22.14 or newer. Open **http://127.0.0.1:4173/**. The included build requires no npm installation or external runtime network connection. A source checkout needs `npm ci` and `npm run build` first. See [README.md](README.md).
 
 ## Verification
 
