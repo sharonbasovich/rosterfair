@@ -1,0 +1,155 @@
+{
+  "format": "rosterfair-roster",
+  "version": 1,
+  "roster": {
+    "id": "student-makers-day",
+    "title": "Student makers club repair day",
+    "date": "2026-11-14",
+    "volunteers": [
+      {
+        "id": "maya",
+        "name": "Maya Chen",
+        "capabilities": [
+          "welcome"
+        ],
+        "availability": [
+          {
+            "start": 600,
+            "end": 840
+          }
+        ],
+        "preferredMinutes": 120
+      },
+      {
+        "id": "noor",
+        "name": "Noor Ali",
+        "capabilities": [
+          "welcome",
+          "repair"
+        ],
+        "availability": [
+          {
+            "start": 600,
+            "end": 840
+          }
+        ],
+        "preferredMinutes": 240
+      },
+      {
+        "id": "eli",
+        "name": "Eli Parker",
+        "capabilities": [
+          "welcome",
+          "logistics"
+        ],
+        "availability": [
+          {
+            "start": 600,
+            "end": 840
+          }
+        ],
+        "preferredMinutes": 120
+      },
+      {
+        "id": "alex",
+        "name": "Alex Rivera",
+        "capabilities": [
+          "repair"
+        ],
+        "availability": [
+          {
+            "start": 600,
+            "end": 720
+          }
+        ],
+        "preferredMinutes": 60
+      },
+      {
+        "id": "bea",
+        "name": "Bea Morgan",
+        "capabilities": [
+          "logistics"
+        ],
+        "availability": [
+          {
+            "start": 600,
+            "end": 720
+          }
+        ],
+        "preferredMinutes": 120
+      },
+      {
+        "id": "jun",
+        "name": "Jun Lee",
+        "capabilities": [
+          "photography"
+        ],
+        "availability": [
+          {
+            "start": 660,
+            "end": 780
+          }
+        ],
+        "preferredMinutes": 120
+      }
+    ],
+    "shifts": [
+      {
+        "id": "welcome",
+        "title": "Welcome desk",
+        "start": 600,
+        "end": 720,
+        "requires": [
+          "welcome"
+        ],
+        "volunteerId": "maya",
+        "pinned": false
+      },
+      {
+        "id": "repair-am",
+        "title": "Repair bench",
+        "start": 600,
+        "end": 720,
+        "requires": [
+          "repair"
+        ],
+        "volunteerId": "noor",
+        "pinned": false
+      },
+      {
+        "id": "logistics",
+        "title": "Tool station",
+        "start": 600,
+        "end": 720,
+        "requires": [
+          "logistics"
+        ],
+        "volunteerId": "eli",
+        "pinned": false
+      },
+      {
+        "id": "photos",
+        "title": "Event photography",
+        "start": 660,
+        "end": 780,
+        "requires": [
+          "photography"
+        ],
+        "volunteerId": "jun",
+        "pinned": true
+      },
+      {
+        "id": "repair-pm",
+        "title": "Afternoon repairs",
+        "start": 720,
+        "end": 840,
+        "requires": [
+          "repair"
+        ],
+        "volunteerId": "noor",
+        "pinned": false
+      }
+    ],
+    "absences": []
+  }
+}
