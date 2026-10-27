@@ -1,6 +1,8 @@
 # Attribution and dependencies
 
-Original RosterFair source, synthetic fixtures and custom SVG icons were created by **Sharon Basovich with Codex AI assistance on October 25–26, 2026**. AI assistance covered design, implementation and verification. Original application code is released under the [MIT license](LICENSE).
+Original RosterFair source, synthetic fixtures and custom SVG icons were created by **Sharon Basovich with Codex AI assistance on October 25-27, 2026**. AI assistance covered design, implementation and verification. Claude through Kiro provided bounded static review of v0.3.0; its suggestions were checked against the code and tests. Original application code is released under the [MIT license](LICENSE).
+
+No third-party template or component was added in v0.3.0. The roster projection uses original React and CSS, retaining the established interface and runtime licenses.
 
 Bundled examples and verification data are synthetic. No external photographs or downloaded fonts are included; the interface uses fonts installed on the device. Imported roster files may contain personal information, but the app reads them locally and does not upload them.
 

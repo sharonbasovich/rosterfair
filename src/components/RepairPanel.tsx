@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { RepairOption, Roster, SolveResult } from '../domain';
 import { Icon } from './Icon';
 import { person, time } from '../format';
 
-type Props = {roster:Roster;result:SolveResult|null;busy:boolean;error:string|null;onSolve:()=>void;onApply:(option:RepairOption)=>void};
-export function RepairPanel({roster,result,busy,error,onSolve,onApply}:Props) {
-  const [selected,setSelected] = useState(0);
+type Props = {roster:Roster;result:SolveResult|null;selected:number;onSelect:(index:number)=>void;busy:boolean;error:string|null;onSolve:()=>void;onApply:(option:RepairOption)=>void};
+export function RepairPanel({roster,result,selected,onSelect,busy,error,onSolve,onApply}:Props) {
   const summaryRef = useRef<HTMLDivElement>(null);
   useEffect(()=>{if(result)summaryRef.current?.focus();},[result]);
-  const option = result?.options[selected] ?? result?.options[0];
+  const option = result?.options[selected];
   const vacancies = roster.shifts.filter(s=>!s.volunteerId);
   const shift = (id:string) => roster.shifts.find(s=>s.id===id)!;
   return <aside className="repair-panel" aria-labelledby="repair-heading" aria-busy={busy}>
@@ -22,7 +21,7 @@ export function RepairPanel({roster,result,busy,error,onSolve,onApply}:Props) {
         {result.conflicts.length>0&&<ul className="conflicts">{result.conflicts.map((c,i)=><li key={i}>{c.message}</li>)}</ul>}
         {result.options.length>0&&<>
           <fieldset className="options"><legend>Compare {result.options.length} {result.options.length===1?'option':'options'}</legend>
-            {result.options.map((o,i)=><label key={o.id} className={`option ${option?.id===o.id?'selected':''}`}><input type="radio" name="repair-option" value={i} checked={option?.id===o.id} onChange={()=>setSelected(i)}/><span className="option-content"><strong>Option {String.fromCharCode(65+i)}{i===0?' · Ranked first':''}</strong><span>{o.score.covered}/{result.totalSlots} covered <span className="metric-divider">/</span> {o.score.changed} existing {o.score.changed===1?'assignment':'assignments'} moved</span><small>Workload preference cost: {o.score.workload.toLocaleString()} min²</small></span></label>)}
+            {result.options.map((o,i)=><label key={o.id} className={`option ${option?.id===o.id?'selected':''}`}><input type="radio" name="repair-option" value={i} checked={option?.id===o.id} onChange={()=>onSelect(i)}/><span className="option-content"><strong>Option {String.fromCharCode(65+i)}{i===0?' · Ranked first':''}</strong><span>{o.score.covered}/{result.totalSlots} covered <span className="metric-divider">/</span> {o.score.changed} existing {o.score.changed===1?'assignment':'assignments'} moved</span><small>Workload preference cost: {o.score.workload.toLocaleString()} min²</small></span></label>)}
           </fieldset>
           {option&&<div className="plan-detail">
             <h3>What would change</h3>
@@ -35,7 +34,7 @@ export function RepairPanel({roster,result,busy,error,onSolve,onApply}:Props) {
         <details className="candidate-details"><summary>Why a direct replacement may fail</summary><p>Eligibility checks capabilities, availability and recorded absences. Existing overlapping assignments can move only when unpinned.</p>{result.diagnostics.filter(d=>!shift(d.shiftId).volunteerId).map(d=><div key={d.shiftId}><h4>{shift(d.shiftId).title}</h4><ul>{d.candidates.map(c=><li key={c.volunteerId}><strong>{person(roster,c.volunteerId)}</strong><span>{c.reasons.length?c.reasons.join(' '):c.currentConflictShiftIds.length?`Already assigned to ${c.currentConflictShiftIds.map(id=>shift(id).title).join(', ')}.`:'Available directly.'}</span></li>)}</ul></div>)}</details>
         <p className="search-meta">{result.explored.toLocaleString()} search nodes · {Math.round(result.elapsedMs)} ms · {result.status==='optimal'?'Proven best ranking':result.status==='limited'?'Bounded search, not proven optimal':'No repair applied'}</p>
       </>}
-      <button className="primary find-button" disabled={busy} onClick={()=>{setSelected(0);onSolve();}}><Icon name="branch"/>{busy?'Finding repairs…':result?'Find repairs again':'Find feasible repairs'}</button>
+      <button className="primary find-button" disabled={busy} onClick={onSolve}><Icon name="branch"/>{busy?'Finding repairs…':result?'Find repairs again':'Find feasible repairs'}</button>
       <p className="hard-rule-note">Hard rules are never traded for better coverage.</p>
     </div>
   </aside>;

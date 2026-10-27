@@ -4,7 +4,7 @@ Repair a volunteer roster after a cancellation, with changes an organizer can in
 
 RosterFair is a small local workbench for adult student clubs. It checks explicit capabilities and availability, considers reassignment chains when a direct replacement fails, and compares coverage, disruption and stated workload preferences. The organizer chooses whether to apply a proposal and can undo it.
 
-Version **0.2.0** includes manual JSON save and restore. The original application code is free to use under the [MIT license](LICENSE). Dependencies retain their own licenses; see [attribution](THIRD-PARTY.md) and [runtime notices](THIRD_PARTY_NOTICES.txt).
+Version **0.3.0** adds an interactive before/after roster preview to the manual JSON save and restore workflow. The original application code is free to use under the [MIT license](LICENSE). Dependencies retain their own licenses; see [attribution](THIRD-PARTY.md) and [runtime notices](THIRD_PARTY_NOTICES.txt).
 
 ## Run locally
 
@@ -33,10 +33,12 @@ Dependency installation requires network access. The built app makes no external
 1. In **Two-person repair**, review the current roster and its pinned photography assignment.
 2. Select **Record demo cancellation**. The welcome slot opens and the canceled volunteer is unavailable for that time window.
 3. Select **Find feasible repairs**. A direct replacement cannot cover the gap without another change. Option A moves Eli from tools to welcome and Bea into tools. Option B moves Noor from repair to welcome and Alex into repair.
-4. Compare the complete change lists and workload details. Both cover all five slots and move one existing assignment; their soft preference costs differ.
+4. Use **Compare repair** in the preview or the option radios at the repair desk. Both controls select the same proposal. The preview starts with **Changes only** enabled; turn it off to inspect every role, including preserved pins and gaps. Open a role to inspect its requirements, stated availability and the proposed assignees of the volunteer's current roles. Both A and B cover all five slots and move one existing assignment; their soft preference costs differ.
 5. Explicitly apply an option. **Undo last change** restores the previous roster. Searching or selecting an option alone never changes assignments.
 
 Try **No complete repair** to see a proven coverage shortfall, or **Contradictory pins** to see a fixed-assignment conflict. The app does not silently relax a pin. Volunteer inputs and role requirements can be edited; saved changes invalidate old repair proposals.
+
+**Preview only** and **Not applied** distinguish a proposal from the current roster below it. Timeline bars show role times, not volunteer availability. A gap left open says **Still open**; a currently assigned slot that a proposal empties says **Becomes open**. The current roster and undo history do not change while comparing or inspecting. On small screens, the preview and repair desk appear together before the saved roster, in the same order as keyboard navigation.
 
 ## Ranking and hard constraints
 
@@ -72,10 +74,10 @@ Start with the [synthetic example](examples/one-day-roster.json) and read the [f
 
 ## Verification
 
-Version 0.2.0 passed **35 domain/state tests**, **12 production Chrome browser tests**, lint, TypeScript checks and the production build. Coverage includes an independent tiny-instance oracle, impossible and conflicting schedules, repeated apply/undo flows, file round trips after closing a tab, rejection atomicity, keyboard focus, responsive layouts, reduced motion and automated accessibility checks. See [VERIFICATION.md](VERIFICATION.md) for reproduction commands and limits.
+Version 0.3.0 passed **35 domain/state tests**, **21 production Chrome browser tests**, lint, TypeScript checks and the production build. Coverage includes an independent tiny-instance oracle, impossible and conflicting schedules, repeated apply/undo flows, file round trips after closing a tab, rejection atomicity, keyboard focus, responsive layouts, reduced motion and automated accessibility checks. See [VERIFICATION.md](VERIFICATION.md) for reproduction commands and limits.
 
 ## Scope and attribution
 
 This prototype supports a single local day. It has no multiuser collaboration, notifications, timezone conversion, overnight shifts, travel/rest rules or qualification expiry. It is not designed for employment, emergency or medical staffing. No real organizer study, real volunteer-data evaluation or measured social-impact claim has been made. Safari, Firefox, physical devices and screen readers remain untested; automated checks are not accessibility certification.
 
-Original source, synthetic fixtures and custom icons were created by **Sharon Basovich with Codex AI assistance on October 25–26, 2026**. AI assistance included design, implementation and verification. See [THIRD-PARTY.md](THIRD-PARTY.md) for dependency attribution and [release notes](release-notes-v0.2.0.md) for this version.
+Original source, synthetic fixtures and custom icons were created by **Sharon Basovich with Codex AI assistance on October 25-27, 2026**. AI assistance included design, implementation and verification; Claude through Kiro provided bounded static review for v0.3.0. See [THIRD-PARTY.md](THIRD-PARTY.md) for dependency attribution and [release notes](release-notes-v0.3.0.md) for this version.

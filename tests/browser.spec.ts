@@ -9,6 +9,7 @@ async function search(page:Page) {
 test('keyboard cancellation, compare, apply, undo and repeat preserve an inspectable roster',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');
+  await expect(page.getByRole('heading',{level:1})).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link',{name:'Skip to roster'})).toBeFocused();
   await page.getByRole('button',{name:'Record demo cancellation',exact:true}).press('Enter');
