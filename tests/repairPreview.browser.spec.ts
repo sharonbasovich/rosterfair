@@ -159,3 +159,48 @@ test('an assigned slot that becomes uncovered is distinguished from an existing 
   await page.getByRole('button',{name:'Apply partial repair',exact:true}).click();await expect(current(page).getByRole('row').filter({hasText:'Synthetic repair'})).toContainText('Open slot');
   await page.getByRole('button',{name:'Undo last change',exact:true}).click();await expect(current(page).getByRole('row').filter({hasText:'Synthetic repair'})).toContainText(volunteer.name);
 });
+
+for (const failure of ['constructor', 'postMessage'] as const) {
+  test(`synchronous worker ${failure} failures preserve the roster and allow retry`, async ({page}) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.addInitScript(({failure}) => {
+      const OriginalWorker = window.Worker;
+      let attempts = 0;
+      const state = {terminated: 0};
+      Object.assign(window, {workerRecoveryTest: state});
+      window.Worker = new Proxy(OriginalWorker, {
+        construct(Target, args: ConstructorParameters<typeof Worker>) {
+          attempts++;
+          if (attempts <= 2 && failure === 'constructor') throw new DOMException('Synthetic worker policy failure', 'SecurityError');
+          const instance = new Target(...args);
+          const terminate = instance.terminate.bind(instance);
+          instance.terminate = () => { state.terminated++; terminate(); };
+          if (attempts <= 2) instance.postMessage = () => { throw new DOMException('Synthetic clone failure', 'DataCloneError'); };
+          return instance;
+        },
+      });
+    }, {failure});
+    await page.goto('/');
+    await page.getByRole('button', {name:'Record demo cancellation', exact:true}).click();
+    const saved = await current(page).innerText();
+    const find = page.getByRole('button', {name:/Find (feasible repairs|repairs again)/});
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await find.click();
+      await expect(page.getByRole('alert')).toContainText('The local search worker could not start.');
+      await expect(find).toBeEnabled();
+      await expect(page.getByText('Checking feasible repairs…', {exact:true})).toHaveCount(0);
+      await expect(preview(page)).toHaveCount(0);
+      expect(await current(page).innerText()).toBe(saved);
+    }
+    expect(await page.evaluate(() => (window as unknown as {workerRecoveryTest:{terminated:number}}).workerRecoveryTest.terminated)).toBe(failure === 'postMessage' ? 2 : 0);
+    await solve(page);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(preview(page)).toBeVisible();
+    expect(await current(page).innerText()).toBe(saved);
+    // Failed searches must not have added undo snapshots.
+    await page.getByRole('button', {name:'Undo last change', exact:true}).click();
+    await expect(page.getByRole('button', {name:'Undo last change', exact:true})).toBeDisabled();
+    expect(errors).toEqual([]);
+  });
+}
