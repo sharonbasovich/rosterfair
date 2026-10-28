@@ -50,10 +50,18 @@ export default function App() {
   }
   function findRepairs() {
     invalidate();setBusy(true);setNotice('Searching. Your roster will change only when you apply an option.');
-    const next=new Worker(new URL('./solver.worker.ts',import.meta.url),{type:'module'});worker.current=next;
-    next.onmessage=(event:MessageEvent<{result?:SolveResult;error?:string}>)=>{if(worker.current!==next)return;setBusy(false);next.terminate();worker.current=null;if(event.data.result){setResult(event.data.result);setNotice('Search complete. Compare the changes before applying a repair.');}else setError(event.data.error??'Unexpected search error.');};
-    next.onerror=()=>{if(worker.current!==next)return;next.terminate();worker.current=null;setBusy(false);setError('The local search worker could not run.');};
-    next.postMessage({roster});
+    try {
+      const next=new Worker(new URL('./solver.worker.ts',import.meta.url),{type:'module'});worker.current=next;
+      next.onmessage=(event:MessageEvent<{result?:SolveResult;error?:string}>)=>{if(worker.current!==next)return;setBusy(false);next.terminate();worker.current=null;if(event.data.result){setResult(event.data.result);setNotice('Search complete. Compare the changes before applying a repair.');}else setError(event.data.error??'Unexpected search error.');};
+      next.onerror=()=>{if(worker.current!==next)return;next.terminate();worker.current=null;setBusy(false);setError('The local search worker could not run.');};
+      next.postMessage({roster});
+    } catch {
+      // Construction (for example a browser policy restriction) and message
+      // cloning can fail synchronously, before the worker can report an error.
+      invalidate();
+      setError('The local search worker could not start.');
+      setNotice('Search could not start. Your roster has not changed; you can try again.');
+    }
   }
   function apply(option:RepairOption){edit(applyRepair(session,option),'Repair applied to this local roster. Undo restores the previous assignments.',true);}
   return <div className="app-shell">
