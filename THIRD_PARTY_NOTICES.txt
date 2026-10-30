@@ -2892,4 +2892,3 @@ Repository: https://github.com/yargs/yargs-parser.git
 
 
 React DOM source attribution: Modernizr 3.0.0pre (Custom Build) | MIT
-
