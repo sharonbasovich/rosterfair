@@ -65,6 +65,12 @@ for (const width of [390, 1440]) test(`rendered hosted workflow at ${width}px`, 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `hosted-results/repair-${width}.png`, fullPage: true });
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+  const filter = page.locator('.preview-filter');
+  expect(await filter.evaluate(e => getComputedStyle(e).transitionProperty)).toBe('transform');
+  await filter.press('Enter');
+  await page.locator('.repair-preview summary').first().press('Enter');
+  await page.screenshot({ path: `hosted-results/expanded-${width}.png`, fullPage: true });
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await page.locator('.plan-detail').evaluate(e => getComputedStyle(e).animationName)).toBe('none');
   expect(await page.locator('.apply-button').evaluate(e => getComputedStyle(e).transitionDuration)).toBe('0s');
