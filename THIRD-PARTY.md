@@ -31,3 +31,4 @@ These packages retain their own copyrights, including notices for Meta Platforms
 The versions above were read from installed package metadata for this release. `package.json` and `package-lock.json` describe the dependency graph used to build from source. This table is a summary of selected direct tools and runtime packages, not a claim that all transitive dependencies share one license. Each dependency retains the license and copyright notices supplied with its package. The development-only axe packages are not imported into the application runtime.
 
 Node.js is a separately installed local runtime. Google Chrome is a separately installed browser used for verification. Neither is bundled in the release ZIP. No paid service or external API is required to run RosterFair.
+
