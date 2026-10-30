@@ -1,0 +1,77 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+test('missing worker remains explicit and allows retry without changing assignments', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.route('**/solver.worker-*.js', route => route.abort());
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Search could not finish');
+  await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+  await expect(page.getByRole('button', { name: 'Find feasible repairs', exact: true })).toBeEnabled();
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: 'hosted-results/worker-error.png', fullPage: true });
+  await page.unroute('**/solver.worker-*.js');
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+});
+
+test('prefixed static app loads its worker and completes repair, compare, apply and undo without data transmission', async ({ page, context, baseURL }) => {
+  const requests: { url: string; method: string; body: string | null }[] = [];
+  const errors: string[] = [];
+  context.on('requestfailed', r => errors.push(`Request failed: ${r.url()}`));
+  context.on('response', r => { if (r.status() >= 400) errors.push(`HTTP ${r.status()}: ${r.url()}`); });
+  context.on('request', r => requests.push({ url: r.url(), method: r.method(), body: r.postData() }));
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto('./');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('One cancellation.');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  await expect(page.getByRole('radio')).toHaveCount(4);
+  await page.getByRole('radio', { name: /Option B 5/ }).check();
+  await expect(page.locator('.plan-detail')).toContainText('Alex Rivera');
+  await page.getByRole('button', { name: 'Apply option B', exact: true }).click();
+  await expect(page.locator('.notice')).toContainText('Repair applied');
+  await page.getByRole('button', { name: 'Undo last change', exact: true }).click();
+  await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+  await page.locator('#volunteer-summary-maya').click();
+  const form = page.getByRole('form', { name: 'Edit Maya Chen constraints' });
+  await form.getByLabel('Maya Chen window 1 end', { exact: true }).fill('14:00');
+  await form.getByLabel('welcome', { exact: true }).uncheck();
+  await form.getByRole('button', { name: 'Save constraints', exact: true }).click();
+  await expect(page.locator('.notice')).toContainText('Volunteer inputs saved');
+  await page.reload();
+  await expect(page.locator('.count').first()).toHaveText('5 / 5 assigned');
+  expect(errors).toEqual([]);
+  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.every(r => r.url.startsWith(baseURL!) && r.method === 'GET' && r.body === null && new URL(r.url).search === '')).toBe(true);
+  expect(requests.some(r => /solver\.worker.*\.js/.test(r.url))).toBe(true);
+});
+
+for (const width of [390, 1440]) test(`rendered hosted workflow at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('./');
+  await page.screenshot({ path: `hosted-results/arrival-${width}.png`, fullPage: true });
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Skip to roster' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).press('Enter');
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).press('Enter');
+  await expect(page.locator('.search-summary')).toBeFocused();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `hosted-results/repair-${width}.png`, fullPage: true });
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await page.locator('.plan-detail').evaluate(e => getComputedStyle(e).animationName)).toBe('none');
+  expect(await page.locator('.apply-button').evaluate(e => getComputedStyle(e).transitionDuration)).toBe('0s');
+  await page.getByLabel('Try a scenario').selectOption('impossible');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is impossible');
+  await page.screenshot({ path: `hosted-results/impossible-${width}.png`, fullPage: true });
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+});
