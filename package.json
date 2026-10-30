@@ -12,7 +12,7 @@
     "typecheck": "tsc -b",
     "test": "tsx --test tests/*.test.ts",
     "test:browser": "playwright test",
-    "build:hosted": "tsc -b && vite build --base=/rosterfair/ --outDir=hosted-site/rosterfair",
+    "build:hosted": "tsc -b && vite build --base=/rosterfair/ --outDir=hosted-site/rosterfair && node scripts/package-hosted.mjs",
     "test:hosted": "playwright test --config=playwright.hosted.config.ts"
   },
   "dependencies": {

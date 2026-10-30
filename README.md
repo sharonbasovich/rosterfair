@@ -6,9 +6,27 @@ RosterFair is a small local workbench for adult student clubs. It checks explici
 
 Version **0.3.0** adds an interactive before/after roster preview to the manual JSON save and restore workflow. The original application code is free to use under the [MIT license](LICENSE). Dependencies retain their own licenses; see [attribution](THIRD-PARTY.md) and [runtime notices](THIRD_PARTY_NOTICES.txt).
 
+## Browser demo
+
+The static browser build runs the same repair engine and synthetic examples without installing Node.js. It does not require an account. The downloadable local version remains available and unchanged.
+
+The hosting service receives ordinary requests for the page, JavaScript, styles and worker. Roster edits and repair calculations happen in browser memory; the app has no upload API, analytics or remote storage. Dedicated Chromium tests observe same-origin static GET requests only during cancellation, comparison, apply, undo and edits. Reloading resets the unsaved roster. Use synthetic data for a public demo; use the downloadable local version when offline operation matters.
+
+To reproduce the project-prefix build and browser checks:
+
+```text
+npm ci
+npm run build:hosted
+node scripts/serve-hosted.mjs
+# In another terminal:
+npm run test:hosted
+```
+
+Open **http://127.0.0.1:4174/rosterfair/**. Publish the **contents** of `hosted-site/rosterfair/` at the GitHub Pages project prefix `/rosterfair/`; do not publish its parent directory at that prefix. The build includes application and third-party notices.
+
 ## Run locally
 
-Use **Node.js 22.14 or newer** and a modern browser. The CI workflow targets Node 24. No account is required. No hosted app is provided.
+Use **Node.js 22.14 or newer** and a modern browser. The CI workflow targets Node 24. No account is required.
 
 For the compiled release ZIP:
 
@@ -81,3 +99,4 @@ Version 0.3.0 passed **35 domain/state tests**, **21 production Chrome browser t
 This prototype supports a single local day. It has no multiuser collaboration, notifications, timezone conversion, overnight shifts, travel/rest rules or qualification expiry. It is not designed for employment, emergency or medical staffing. No real organizer study, real volunteer-data evaluation or measured social-impact claim has been made. Safari, Firefox, physical devices and screen readers remain untested; automated checks are not accessibility certification.
 
 Original source, synthetic fixtures and custom icons were created by **Sharon Basovich with Codex AI assistance on October 25-27, 2026**. AI assistance included design, implementation and verification; Claude through Kiro provided bounded static review for v0.3.0. See [THIRD-PARTY.md](THIRD-PARTY.md) for dependency attribution and [release notes](release-notes-v0.3.0.md) for this version.
+
