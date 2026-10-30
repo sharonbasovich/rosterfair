@@ -8,6 +8,8 @@ Version **0.3.0** adds an interactive before/after roster preview to the manual 
 
 ## Browser demo
 
+[Try RosterFair in your browser](https://sharonbasovich.github.io/rosterfair/).
+
 The static browser build runs the same repair engine and synthetic examples without installing Node.js. It does not require an account. The downloadable local version remains available and unchanged.
 
 The hosting service receives ordinary requests for the page, JavaScript, styles and worker. Roster edits and repair calculations happen in browser memory; the app has no upload API, analytics or remote storage. Dedicated Chromium tests observe same-origin static GET requests only during cancellation, comparison, apply, undo and edits. Reloading resets the unsaved roster. Use synthetic data for a public demo; use the downloadable local version when offline operation matters.
