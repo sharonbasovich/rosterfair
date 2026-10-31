@@ -7,6 +7,7 @@ test('missing worker remains explicit and allows retry without changing assignme
   await page.route('**/solver.worker-*.js', route => route.abort());
   await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Search could not finish');
+  await expect(page.locator('.notice')).toContainText('Search could not finish.');
   await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
   await expect(page.getByRole('button', { name: 'Find feasible repairs', exact: true })).toBeEnabled();
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
@@ -80,4 +81,96 @@ for (const width of [390, 1440]) test(`rendered hosted workflow at ${width}px`, 
   await expect(page.locator('.search-summary')).toContainText('Full coverage is impossible');
   await page.screenshot({ path: `hosted-results/impossible-${width}.png`, fullPage: true });
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+});
+
+// Only the first search is substituted. A retry must use the real bundled worker.
+for (const failure of ['worker-error', 'message-error', 'error-reply', 'null-reply', 'partial-reply', 'timeout'] as const) {
+  test(`${failure} ends the live status and permits a real retry`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.addInitScript(mode => {
+      const NativeWorker = window.Worker;
+      let first = true;
+      window.Worker = class extends EventTarget {
+        onmessage: ((event: MessageEvent) => void) | null = null;
+        onerror: ((event: ErrorEvent) => void) | null = null;
+        onmessageerror: ((event: MessageEvent) => void) | null = null;
+        constructor(url: string | URL, options?: WorkerOptions) {
+          super();
+          if (!first) return new NativeWorker(url, options);
+          first = false;
+        }
+        postMessage(message: unknown) { void message;
+          queueMicrotask(() => {
+            if (mode === 'worker-error') this.onerror?.(new ErrorEvent('error'));
+            if (mode === 'message-error') this.onmessageerror?.(new MessageEvent('messageerror'));
+            if (mode === 'error-reply') this.onmessage?.(new MessageEvent('message', { data: { error: 'Synthetic search failure.' } }));
+            if (mode === 'null-reply') this.onmessage?.(new MessageEvent('message', { data: null }));
+            if (mode === 'partial-reply') this.onmessage?.(new MessageEvent('message', { data: { result: { options: [] } } }));
+          });
+        }
+        terminate() { /* Synthetic worker has no background work. */ }
+      } as unknown as typeof Worker;
+    }, failure);
+    await page.goto('./');
+    await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+    if (failure === 'timeout') await page.clock.install();
+    await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+    if (failure === 'timeout') {
+      await expect(page.locator('.notice')).toContainText('Searching.');
+      await page.clock.fastForward(10_001);
+    }
+    await expect(page.getByRole('alert')).toContainText('Search could not finish');
+    await expect(page.locator('.notice')).toHaveText('Search could not finish. Your roster has not changed; you can try again.');
+    await expect(page.locator('.repair-panel')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+    await expect(page.getByRole('button', { name: 'Find feasible repairs', exact: true })).toBeEnabled();
+    if (failure === 'timeout') {
+      await page.screenshot({ path: 'hosted-results/worker-timeout.png', fullPage: true });
+      await page.setViewportSize({ width: 390, height: 900 });
+      await page.screenshot({ path: 'hosted-results/worker-timeout-390.png', fullPage: true });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    }
+    await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+    await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+    await expect(page.locator('.notice')).toHaveText('Search complete. Compare the changes before applying a repair.');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+    if (failure === 'timeout') {
+      await page.clock.fastForward(20_000);
+      await expect(page.locator('.notice')).toContainText('Search complete.');
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+test('editing cancels a stalled search and ignores its late failure and timeout', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    let first = true;
+    window.Worker = class extends EventTarget {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: ((event: ErrorEvent) => void) | null = null;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super();
+        if (!first) return new NativeWorker(url, options);
+        first = false;
+      }
+      postMessage(message: unknown) { void message; setTimeout(() => this.onmessage?.(new MessageEvent('message', { data: null })), 2_000); }
+      terminate() { /* Deliberately deliver an already-queued stale event. */ }
+    } as unknown as typeof Worker;
+  });
+  await page.goto('./');
+  await page.clock.install();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await page.getByLabel('Try a scenario').selectOption('impossible');
+  await expect(page.locator('.notice')).toContainText('Demo loaded.');
+  await page.clock.fastForward(20_000);
+  await expect(page.locator('.notice')).toContainText('Demo loaded.');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.repair-panel')).toHaveAttribute('aria-busy', 'false');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is impossible');
 });

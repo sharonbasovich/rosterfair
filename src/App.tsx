@@ -10,6 +10,7 @@ import { ShiftEditor } from './components/ShiftEditor';
 import { RosterFiles } from './components/RosterFiles';
 import { time } from './format';
 import { RepairPreview } from './components/RepairPreview';
+import { readWorkerReply } from './workerReply';
 
 export default function App() {
   const [fixtureId,setFixtureId]=useState('chain');
@@ -22,12 +23,18 @@ export default function App() {
   const [editorEpoch,setEditorEpoch]=useState(0);
   const [viewHistory,setViewHistory]=useState<string[]>([]);
   const worker=useRef<Worker|null>(null);
+  const searchTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const noticeRef=useRef<HTMLDivElement>(null);
   const roster=session.roster;
   const fixture=DEMO_FIXTURES.find(f=>f.id===fixtureId);
   const open=roster.shifts.filter(s=>!s.volunteerId).length;
-  useEffect(()=>()=>worker.current?.terminate(),[]);
-  function invalidate() {worker.current?.terminate();worker.current=null;setBusy(false);setResult(null);setSelected(0);setError(null);}
+  useEffect(()=>()=>{worker.current?.terminate();if(searchTimer.current!==null)clearTimeout(searchTimer.current);},[]);
+  function stopSearch() {
+    worker.current?.terminate();worker.current=null;
+    if(searchTimer.current!==null)clearTimeout(searchTimer.current);
+    searchTimer.current=null;setBusy(false);
+  }
+  function invalidate() {stopSearch();setResult(null);setSelected(0);setError(null);}
   function edit(change:EditResult,message:string,focusNotice=false) {if(!change.ok){setNotice(change.error);if(focusNotice)requestAnimationFrame(()=>noticeRef.current?.focus());return;}invalidate();setSession(change.session);setViewHistory(h=>[...h.slice(-49),fixtureId]);setNotice(message);if(focusNotice)requestAnimationFrame(()=>noticeRef.current?.focus());}
   function undoLastChange() {
     const change=undoEdit(session);
@@ -52,8 +59,23 @@ export default function App() {
     invalidate();setBusy(true);setNotice('Searching. Your roster will change only when you apply an option.');
     try {
       const next=new Worker(new URL('./solver.worker.ts',import.meta.url),{type:'module'});worker.current=next;
-      next.onmessage=(event:MessageEvent<{result?:SolveResult;error?:string}>)=>{if(worker.current!==next)return;setBusy(false);next.terminate();worker.current=null;if(event.data.result){setResult(event.data.result);setNotice('Search complete. Compare the changes before applying a repair.');}else setError(event.data.error??'Unexpected search error.');};
-      next.onerror=()=>{if(worker.current!==next)return;next.terminate();worker.current=null;setBusy(false);setError('The local search worker could not run.');};
+      const fail=(message:string)=>{
+        if(worker.current!==next)return;
+        stopSearch();setError(message);
+        setNotice('Search could not finish. Your roster has not changed; you can try again.');
+      };
+      next.onmessage=(event:MessageEvent<unknown>)=>{
+        if(worker.current!==next)return;
+        const reply=readWorkerReply(event.data,roster);
+        if('error' in reply){fail(reply.error);return;}
+        stopSearch();setResult(reply.result);
+        setNotice('Search complete. Compare the changes before applying a repair.');
+      };
+      next.onerror=()=>fail('The local search worker could not run.');
+      next.onmessageerror=()=>fail('The local search response could not be read.');
+      // The solver has a 1.5-second budget; allow startup overhead, but never
+      // leave a missing or stalled worker holding the interface indefinitely.
+      searchTimer.current=setTimeout(()=>fail('The local search timed out. Please try again.'),10_000);
       next.postMessage({roster});
     } catch {
       // Construction (for example a browser policy restriction) and message
