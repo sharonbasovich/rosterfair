@@ -1,0 +1,52 @@
+name: Verify hosted demo
+on:
+  push:
+    branches: [feat/hosted-demo, fix/search-status, fix/option-description, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hosted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run lint && npm run typecheck && npm test
+      - run: npm run build && npm run build:hosted
+      - run: npx playwright install --with-deps chromium
+      - name: Exercise static prefix and actual worker
+        run: |
+          node scripts/serve-hosted.mjs &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:4174/rosterfair/ >/dev/null; then break; fi
+            sleep 1
+          done
+          npm run test:hosted
+      - name: Exercise complete local browser regression suite
+        run: |
+          node server.mjs &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          ROSTERFAIR_TEST_URL=http://127.0.0.1:4173 npm run test:browser
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: rosterfair-hosted-review
+          path: |
+            test-results/
+            hosted-results/
+            hosted-site/
+          retention-days: 14

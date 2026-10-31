@@ -20,8 +20,14 @@ test('download a repaired edited roster, close the tab, import the actual file a
   await page.getByRole('button',{name:'Record demo cancellation',exact:true}).click();
   await page.getByRole('button',{name:'Find feasible repairs',exact:true}).click();
   await page.getByRole('button',{name:'Apply option A',exact:true}).click();
+  // Apply deliberately returns focus to its live notice on the next frame.
+  // Observe that completed transition before exercising the next keyboard action.
+  await expect(page.locator('.notice')).toBeFocused();
+  await page.keyboard.press('Tab');
+  const exportButton=page.getByRole('button',{name:'Export roster JSON',exact:true});
+  await expect(exportButton).toBeFocused();
   const downloadPromise=page.waitForEvent('download');
-  await page.getByRole('button',{name:'Export roster JSON',exact:true}).press('Enter');
+  await page.keyboard.press('Enter');
   const download=await downloadPromise;
   const savedPath=testInfo.outputPath('saved.rosterfair.json');await download.saveAs(savedPath);
   const saved=JSON.parse(await readFile(savedPath,'utf8')) as RosterFileEnvelope;

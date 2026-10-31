@@ -8,3 +8,7 @@ evidence/
 *.zip
 .env
 .env.*
+
+
+hosted-site/
+hosted-results/
