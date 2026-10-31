@@ -211,7 +211,7 @@ test('unchanged limited option does not claim improvement is impossible', async 
         if (!first) return new NativeWorker(url, options);
         first = false;
       }
-      postMessage() { queueMicrotask(() => this.onmessage?.(new MessageEvent('message', { data: { result } }))); }
+      postMessage(message: unknown) { void message; queueMicrotask(() => this.onmessage?.(new MessageEvent('message', { data: { result } }))); }
       terminate() { /* The bounded result is computed before browser startup. */ }
     } as unknown as typeof Worker;
   }, result);
