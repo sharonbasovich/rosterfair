@@ -230,7 +230,7 @@ test('unchanged limited option does not claim improvement is impossible', async 
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
     await page.screenshot({ path: `hosted-results/limited-unchanged-${width}.png`, fullPage: true });
   }
-  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await page.getByRole('button', { name: 'Find repairs again', exact: true }).click();
   await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
   await expect(page.locator('.apply-button')).toBeEnabled();
   await expect(page.locator('.change-list li')).toHaveCount(2);
