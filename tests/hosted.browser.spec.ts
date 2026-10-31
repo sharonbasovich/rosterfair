@@ -192,3 +192,56 @@ test('immediate pointer export after apply downloads the repaired roster', async
   expect(await download.failure()).toBeNull();
   await expect(page.locator('.count').first()).toHaveText('5 / 5 assigned');
 });
+
+// Use an actual bounded solver result, then let retry run the real browser worker.
+test('unchanged limited option does not claim improvement is impossible', async ({ page }) => {
+  const { cancelAssignment, loadFixture, solveRepairs } = await import('../src/domain');
+  const edit = cancelAssignment(loadFixture('chain'), 'welcome');
+  if (!edit.ok) throw new Error(edit.error);
+  const result = solveRepairs(edit.session.roster, { maxNodes: 2, maxMs: 1500 });
+  expect(result.status).toBe('limited');
+  expect(result.options[0].changes).toEqual([]);
+  await page.addInitScript(result => {
+    const NativeWorker = window.Worker;
+    let first = true;
+    window.Worker = class extends EventTarget {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super();
+        if (!first) return new NativeWorker(url, options);
+        first = false;
+      }
+      postMessage() { queueMicrotask(() => this.onmessage?.(new MessageEvent('message', { data: { result } }))); }
+      terminate() { /* The bounded result is computed before browser startup. */ }
+    } as unknown as typeof Worker;
+  }, result);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Search limit reached');
+  await expect(page.locator('.search-summary')).toContainText('optimality is not proven');
+  await expect(page.locator('.plan-detail')).toContainText('This option keeps the current assignments unchanged.');
+  await expect(page.locator('.plan-detail')).not.toContainText('No feasible improvement');
+  await expect(page.locator('.apply-button')).toBeDisabled();
+  await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: `hosted-results/limited-unchanged-${width}.png`, fullPage: true });
+  }
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  await expect(page.locator('.apply-button')).toBeEnabled();
+  await expect(page.locator('.change-list li')).toHaveCount(2);
+  await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
+});
+
+test('unchanged optimal option states only what this option does', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  await expect(page.locator('.plan-detail')).toContainText('This option keeps the current assignments unchanged.');
+  await expect(page.locator('.apply-button')).toBeDisabled();
+  await expect(page.locator('.count').first()).toHaveText('5 / 5 assigned');
+});

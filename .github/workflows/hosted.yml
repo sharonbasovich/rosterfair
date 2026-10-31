@@ -1,7 +1,7 @@
 name: Verify hosted demo
 on:
   push:
-    branches: [feat/hosted-demo, fix/search-status, main]
+    branches: [feat/hosted-demo, fix/search-status, fix/option-description, main]
   workflow_dispatch:
 permissions:
   contents: read
