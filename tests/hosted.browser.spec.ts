@@ -114,6 +114,7 @@ for (const failure of ['worker-error', 'message-error', 'error-reply', 'null-rep
     }, failure);
     await page.goto('./');
     await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+    const savedRoster = await page.locator('.schedule-section').innerText();
     if (failure === 'timeout') await page.clock.install();
     await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
     if (failure === 'timeout') {
@@ -123,6 +124,7 @@ for (const failure of ['worker-error', 'message-error', 'error-reply', 'null-rep
     await expect(page.getByRole('alert')).toContainText('Search could not finish');
     await expect(page.locator('.notice')).toHaveText('Search could not finish. Your roster has not changed; you can try again.');
     await expect(page.locator('.repair-panel')).toHaveAttribute('aria-busy', 'false');
+    expect(await page.locator('.schedule-section').innerText()).toBe(savedRoster);
     await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
     await expect(page.getByRole('button', { name: 'Find feasible repairs', exact: true })).toBeEnabled();
     if (failure === 'timeout') {
@@ -136,6 +138,7 @@ for (const failure of ['worker-error', 'message-error', 'error-reply', 'null-rep
     await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
     await expect(page.locator('.notice')).toHaveText('Search complete. Compare the changes before applying a repair.');
     await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(await page.locator('.schedule-section').innerText()).toBe(savedRoster);
     await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');
     if (failure === 'timeout') {
       await page.clock.fastForward(20_000);

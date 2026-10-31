@@ -26,3 +26,22 @@ test('worker protocol rejects malformed envelopes, partial results and broken re
   assert.equal(isSolveResult(result, { ...roster, revision: roster.revision + 1 }), false);
   assert.deepEqual(readWorkerReply({ error: 'Search failed.' }, roster), { error: 'Search failed.' });
 });
+
+
+test('worker protocol accepts bounded results at the supported 12 by 12 input limit', () => {
+  const roster = structuredClone(DEMO_FIXTURES[0].roster);
+  roster.absences = [];
+  roster.volunteers = Array.from({ length: 12 }, (_, i) => ({
+    id: `v${i}`, name: `Volunteer ${i}`, capabilities: ['welcome'],
+    availability: [{ start: 600, end: 720 }], preferredMinutes: 120,
+  }));
+  roster.shifts = Array.from({ length: 12 }, (_, i) => ({
+    id: `s${i}`, title: `Role ${i}`, start: 600, end: 720,
+    requires: ['welcome'], volunteerId: null, pinned: false,
+  }));
+  for (const maxNodes of [0, 200_000]) {
+    const result = solveRepairs(roster, { maxNodes, maxMs: 1500, maxOptions: 4 });
+    assert.equal(isSolveResult(result, roster), true);
+    assert.deepEqual(readWorkerReply({ result }, roster), { result });
+  }
+});
