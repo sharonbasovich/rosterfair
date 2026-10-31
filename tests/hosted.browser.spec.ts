@@ -177,3 +177,18 @@ test('editing cancels a stalled search and ignores its late failure and timeout'
   await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
   await expect(page.locator('.search-summary')).toContainText('Full coverage is impossible');
 });
+
+test('immediate pointer export after apply downloads the repaired roster', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply option A', exact: true }).click();
+  // Deliberately do not wait for Apply's notice-focus transition before clicking.
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Export roster JSON', exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.json$/);
+  expect(await download.failure()).toBeNull();
+  await expect(page.locator('.count').first()).toHaveText('5 / 5 assigned');
+});
