@@ -31,7 +31,7 @@ export default function App() {
       ? previous.includes(id)?previous:[...previous,id]
       : previous.includes(id)?previous.filter(value=>value!==id):previous);
     if(dirty){
-      setNotice('Unsaved volunteer constraints. Save or discard these edits before finding or applying repairs.');
+      setNotice(worker.current ? 'Search stopped after a volunteer edit. Save or discard pending edits, then find repairs again.' : 'Volunteer editor updated. Repairs use saved constraints; save or discard any pending edits before continuing.');
       worker.current?.terminate();worker.current=null;
       if(searchTimer.current!==null)clearTimeout(searchTimer.current);
       searchTimer.current=null;setBusy(false);
