@@ -245,3 +245,89 @@ test('unchanged optimal option states only what this option does', async ({ page
   await expect(page.locator('.apply-button')).toBeDisabled();
   await expect(page.locator('.count').first()).toHaveText('5 / 5 assigned');
 });
+
+for (const width of [390, 1440]) test(`unsaved volunteer constraints guard repair decisions at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Record demo cancellation', exact: true }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  const savedRoster = await page.locator('.schedule-section').textContent();
+  await page.locator('#volunteer-summary-eli').click();
+  const form = page.getByRole('form', { name: 'Edit Eli Parker constraints' });
+  await form.getByLabel('welcome', { exact: true }).uncheck();
+  await expect(page.locator('.pending-constraints')).toContainText('Eli Parker');
+  await expect(page.locator('.pending-constraints')).toContainText('previously saved inputs');
+  await expect(page.getByRole('button', { name: 'Find repairs again', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Apply option A', exact: true })).toBeDisabled();
+  expect(await page.locator('.schedule-section').textContent()).toBe(savedRoster);
+  await page.locator('#volunteer-summary-eli').click();
+  await page.getByRole('button', { name: 'Review unsaved constraints' }).press('Enter');
+  await expect(page.locator('#volunteer-summary-eli')).toBeFocused();
+  await expect(form).toBeVisible();
+  await page.screenshot({ path: `hosted-results/pending-constraints-${width}.png`, fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+  await form.getByRole('button', { name: 'Discard unsaved changes' }).click();
+  await expect(form.getByLabel('welcome', { exact: true })).toBeChecked();
+  await expect(page.locator('.pending-constraints')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Apply option A', exact: true })).toBeEnabled();
+  await form.getByLabel('welcome', { exact: true }).uncheck();
+  await form.getByRole('button', { name: 'Save constraints', exact: true }).click();
+  await expect(page.locator('.pending-constraints')).toHaveCount(0);
+  await expect(page.getByRole('radio')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+  await expect(page.locator('.plan-detail')).toContainText('Noor Ali');
+  expect(await page.locator('.schedule-section').textContent()).toBe(savedRoster);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await page.locator('.apply-button').evaluate(e => getComputedStyle(e).transitionDuration)).toBe('0s');
+});
+
+test('multiple drafts, invalid save and reverted edits cannot clear another pending volunteer', async ({ page }) => {
+  await page.goto('./');
+  await page.locator('#volunteer-summary-maya').click();
+  await page.locator('#volunteer-summary-eli').click();
+  const maya = page.getByRole('form', { name: 'Edit Maya Chen constraints' });
+  const eli = page.getByRole('form', { name: 'Edit Eli Parker constraints' });
+  await maya.getByLabel('Maya Chen window 1 end', { exact: true }).fill('09:00');
+  await eli.getByLabel('welcome', { exact: true }).uncheck();
+  await maya.getByRole('button', { name: 'Save constraints' }).click();
+  await expect(maya.getByRole('alert')).toBeVisible();
+  await expect(page.locator('.pending-constraints')).toContainText('Maya Chen, Eli Parker');
+  await eli.getByLabel('welcome', { exact: true }).check();
+  await expect(page.locator('.pending-constraints')).not.toContainText('Eli Parker');
+  await expect(page.getByRole('button', { name: 'Find feasible repairs', exact: true })).toBeDisabled();
+  await maya.getByRole('button', { name: 'Discard unsaved changes' }).click();
+  await expect(maya.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.pending-constraints')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Find feasible repairs', exact: true })).toBeEnabled();
+});
+
+test('draft edit stops an in-flight search and ignores a late reply before a real retry', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    let first = true;
+    window.Worker = class extends EventTarget {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(); if (!first) return new NativeWorker(url, options); first = false;
+      }
+      postMessage(message: unknown) { void message; setTimeout(() => this.onmessage?.(new MessageEvent('message', { data: null })), 2_000); }
+      terminate() { /* Deliver an already queued stale reply deliberately. */ }
+    } as unknown as typeof Worker;
+  });
+  await page.goto('./');
+  await page.clock.install();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await page.locator('#volunteer-summary-maya').click();
+  const form = page.getByRole('form', { name: 'Edit Maya Chen constraints' });
+  await form.getByLabel('welcome', { exact: true }).uncheck();
+  await expect(page.locator('.repair-panel')).toHaveAttribute('aria-busy', 'false');
+  await page.clock.fastForward(20_000);
+  await expect(page.locator('.search-summary')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await form.getByRole('button', { name: 'Discard unsaved changes' }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
+  await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
+});

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { applyRepair, applyRosterImport, cancelAssignment, DEMO_FIXTURES, loadFixture, togglePin, undoEdit, updateShift, updateVolunteer } from './domain';
 import { exportRosterFile } from './domain/rosterFile';
 import type { EditResult, RepairOption, SolveResult } from './domain';
@@ -22,10 +22,29 @@ export default function App() {
   const [notice,setNotice]=useState('Synthetic roster loaded. Start by recording a cancellation.');
   const [editorEpoch,setEditorEpoch]=useState(0);
   const [viewHistory,setViewHistory]=useState<string[]>([]);
+  const [dirtyVolunteers,setDirtyVolunteers]=useState<string[]>([]);
   const worker=useRef<Worker|null>(null);
   const searchTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const noticeRef=useRef<HTMLDivElement>(null);
+  const reportDirty=useCallback((id:string,dirty:boolean)=>{
+    setDirtyVolunteers(previous=>dirty
+      ? previous.includes(id)?previous:[...previous,id]
+      : previous.includes(id)?previous.filter(value=>value!==id):previous);
+    if(dirty){
+      setNotice('Unsaved volunteer constraints. Save or discard these edits before finding or applying repairs.');
+      worker.current?.terminate();worker.current=null;
+      if(searchTimer.current!==null)clearTimeout(searchTimer.current);
+      searchTimer.current=null;setBusy(false);
+    }
+  },[]);
   const roster=session.roster;
+  const pendingNames=roster.volunteers.filter(v=>dirtyVolunteers.includes(v.id)).map(v=>v.name);
+  function reviewPending() {
+    const summary=document.getElementById(`volunteer-summary-${dirtyVolunteers[0]}`);
+    const details=summary?.closest('details');
+    if(details)details.open=true;
+    summary?.focus();summary?.scrollIntoView({block:'center'});
+  }
   const fixture=DEMO_FIXTURES.find(f=>f.id===fixtureId);
   const open=roster.shifts.filter(s=>!s.volunteerId).length;
   useEffect(()=>()=>{worker.current?.terminate();if(searchTimer.current!==null)clearTimeout(searchTimer.current);},[]);
@@ -56,6 +75,7 @@ export default function App() {
     setFixtureId('custom');setEditorEpoch(n=>n+1);return true;
   }
   function findRepairs() {
+    if(dirtyVolunteers.length){setNotice('Save or discard unsaved volunteer constraints before finding repairs.');return;}
     invalidate();setBusy(true);setNotice('Searching. Your roster will change only when you apply an option.');
     try {
       const next=new Worker(new URL('./solver.worker.ts',import.meta.url),{type:'module'});worker.current=next;
@@ -85,7 +105,7 @@ export default function App() {
       setNotice('Search could not start. Your roster has not changed; you can try again.');
     }
   }
-  function apply(option:RepairOption){edit(applyRepair(session,option),'Repair applied to this local roster. Undo restores the previous assignments.',true);}
+  function apply(option:RepairOption){if(dirtyVolunteers.length){setNotice('Save or discard unsaved volunteer constraints before applying a repair.');return;}edit(applyRepair(session,option),'Repair applied to this local roster. Undo restores the previous assignments.',true);}
   return <div className="app-shell">
     <a className="skip-link" href="#main">Skip to roster</a>
     <aside className="event-rail">
@@ -103,11 +123,11 @@ export default function App() {
       <div className="workspace-grid"><div className="roster-column">
         {fixture?<div className="demo-action"><div><strong>{fixtureId==='pin-conflict'?'Some commitments contradict each other.':roster.absences.length&&!open?'The roster is assigned again.':'A volunteer can no longer make it.'}</strong><p>{fixtureId==='pin-conflict'?'Find repairs to inspect the pinned conflict. Unpin a conflicting assignment to resolve it.':roster.absences.length&&!open?'Undo to compare another repair, or reset the demo.':`Record the cancellation, then find a feasible repair.`}</p></div>{fixtureId!=='pin-conflict'&&<button className="secondary" disabled={roster.absences.some(a=>a.reason===`Cancelled ${roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.title}`)||!roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.volunteerId||Boolean(roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.pinned)} onClick={()=>edit(cancelAssignment(session,fixture.cancelShiftId),'Cancellation recorded, with an absence for that time window. Find repairs to compare your options.',true)}>Record demo cancellation<Icon name="arrow"/></button>}</div>:<div className="demo-action"><div><strong>Your roster is ready to inspect.</strong><p>{roster.date} · Cancel a specific assignment below, or find repairs for open or conflicting slots.</p></div></div>}
         {result?.options[selected]&&<RepairPreview roster={roster} option={result.options[selected]} options={result.options} onSelect={setSelected} label={String.fromCharCode(65+selected)}/>}
-        <RepairPanel roster={roster} result={result} selected={selected} onSelect={setSelected} busy={busy} error={error} onSolve={findRepairs} onApply={apply}/>
+        <RepairPanel roster={roster} result={result} selected={selected} onSelect={setSelected} busy={busy} error={error} onSolve={findRepairs} onApply={apply} pendingNames={pendingNames} onReviewPending={reviewPending}/>
         <Schedule roster={roster} onCancel={id=>edit(cancelAssignment(session,id),'Cancellation recorded. That volunteer is unavailable for the canceled time window.',true)} onPin={id=>edit(togglePin(session,id),'Pin updated. Previous proposals cleared; find repairs again.')} />
         <section className="policy" id="policy"><h2>A policy you can inspect.</h2><ol><li><strong>Cover as many slots as possible.</strong><span>Capabilities, full availability, absences, no overlaps and pins are hard constraints.</span></li><li><strong>Move fewer existing commitments.</strong><span>Filling the canceled slot does not count as a disruption.</span></li><li><strong>Respect stated workload preferences.</strong><span>Break ties using squared minutes over each preferred workload. Preferences can be exceeded.</span></li></ol><p>No inferred personal traits. No claim of objective social fairness. An organizer makes the final choice.</p></section>
       </div></div>
-      <section className="inputs-section" aria-labelledby="inputs-heading"><div className="section-heading"><div><h2 id="inputs-heading">The inputs behind every repair</h2><p>Explicit availability and capabilities. Workload preferences stay soft.</p></div><span className="count">Editable roster data</span></div><VolunteerEditor key={editorEpoch} roster={roster} onUpdate={(id,patch)=>edit(updateVolunteer(session,id,patch),'Volunteer inputs saved. Previous proposals cleared; find repairs again.')} /><ShiftEditor roster={roster} onSave={(id,patch)=>edit(updateShift(session,id,patch),'Role requirements updated. Previous proposals cleared; find repairs again.')} /></section>
+      <section className="inputs-section" aria-labelledby="inputs-heading"><div className="section-heading"><div><h2 id="inputs-heading">The inputs behind every repair</h2><p>Explicit availability and capabilities. Workload preferences stay soft.</p></div><span className="count">Editable roster data</span></div><VolunteerEditor key={editorEpoch} roster={roster} onDirtyChange={reportDirty} onUpdate={(id,patch)=>edit(updateVolunteer(session,id,patch),'Volunteer inputs saved. Previous proposals cleared; find repairs again.')} /><ShiftEditor roster={roster} onSave={(id,patch)=>edit(updateShift(session,id,patch),'Role requirements updated. Previous proposals cleared; find repairs again.')} /></section>
       <footer className="page-footer"><strong>Small roster. Clear tradeoffs.</strong><p>One-day student-club prototype · Search budget 200,000 nodes / 1.5 seconds · Export JSON to retain saved edits</p></footer>
     </main>
   </div>;
