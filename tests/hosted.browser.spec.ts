@@ -331,3 +331,43 @@ test('draft edit stops an in-flight search and ignores a late reply before a rea
   await page.getByRole('button', { name: 'Find feasible repairs', exact: true }).click();
   await expect(page.locator('.search-summary')).toContainText('Full coverage is possible');
 });
+
+test('clear a cancellation after repair without losing assignments, then undo the absence change', async ({ page }) => {
+  await page.goto('/rosterfair/');
+  await page.getByRole('button', { name: 'Record demo cancellation' }).click();
+  await page.getByRole('button', { name: 'Find feasible repairs' }).click();
+  await page.getByRole('button', { name: 'Apply option A', exact: true }).first().click();
+  const schedule = page.getByRole('table', { name: 'Current assignments' });
+  const before = await schedule.innerText();
+  await page.getByRole('button', { name: /^Clear absence for/ }).click();
+  await expect(page.getByRole('heading', { name: 'Recorded absences' })).toHaveCount(0);
+  expect(await schedule.innerText()).toBe(before);
+  await expect(page.locator('.notice')).toContainText('Existing assignments are unchanged');
+  await page.getByRole('button', { name: 'Undo last change' }).click();
+  await expect(page.getByRole('button', { name: /^Clear absence for/ })).toHaveCount(1);
+  expect(await schedule.innerText()).toBe(before);
+});
+
+for (const width of [1440, 390]) test(`clear absence preserves unsaved constraints and focus at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({width, height:900});
+  await page.goto('./');
+  await page.getByRole('button', {name:'Record demo cancellation', exact:true}).click();
+  await page.getByRole('button', {name:'Find feasible repairs', exact:true}).click();
+  await expect(page.locator('.search-summary')).toBeVisible();
+  await page.locator('#volunteer-summary-eli').click();
+  const form = page.getByRole('form', {name:'Edit Eli Parker constraints'});
+  await form.getByLabel('welcome', {exact:true}).uncheck();
+  await page.getByRole('button', {name:/^Clear absence for/}).press('Enter');
+  await expect(page.locator('.notice')).toBeFocused();
+  await expect(page.getByRole('radio')).toHaveCount(0);
+  await expect(form.getByLabel('welcome', {exact:true})).not.toBeChecked();
+  await expect(page.locator('.pending-constraints')).toContainText('Eli Parker');
+  await expect(page.getByRole('button', {name:'Find feasible repairs',exact:true})).toBeDisabled();
+  await form.getByRole('button', {name:'Discard unsaved changes'}).click();
+  await expect(page.getByRole('button', {name:'Find feasible repairs',exact:true})).toBeEnabled();
+  await page.getByRole('button', {name:'Undo last change'}).click();
+  await expect(page.getByRole('button', {name:/^Clear absence for/})).toHaveCount(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
+  await page.screenshot({path:`hosted-results/clear-absence-${width}.png`,fullPage:true});
+});

@@ -102,3 +102,7 @@ This prototype supports a single local day. It has no multiuser collaboration, n
 
 Original source, synthetic fixtures and custom icons were created by **Sharon Basovich with Codex AI assistance on October 25-27, 2026**. AI assistance included design, implementation and verification; Claude through Kiro provided bounded static review for v0.3.0. See [THIRD-PARTY.md](THIRD-PARTY.md) for dependency attribution and [release notes](release-notes-v0.3.0.md) for this version.
 
+
+### A volunteer becomes available again
+
+In Current roster → Recorded absences, choose **Clear absence** for the relevant person and interval. This removes only that recorded constraint: saved availability and other absences still apply. Existing assignments, subsequent edits and pins remain unchanged; no one is reassigned or notified. Previous repair proposals are cleared. Find repairs again to use the updated constraints, or Undo last change to restore the absence. Export JSON to retain the change.

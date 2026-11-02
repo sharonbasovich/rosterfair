@@ -2,7 +2,7 @@ import { validateAssignments } from '../domain';
 import type { Roster } from '../domain';
 import { Icon } from './Icon';
 import { person, time } from '../format';
-export function Schedule({roster,onCancel,onPin}:{roster:Roster;onCancel:(id:string)=>void;onPin:(id:string)=>void}) {
+export function Schedule({roster,onCancel,onPin,onClearAbsence}:{roster:Roster;onCancel:(id:string)=>void;onPin:(id:string)=>void;onClearAbsence:(index:number)=>void}) {
   const violations = validateAssignments(roster, Object.fromEntries(roster.shifts.map(s=>[s.id,s.volunteerId])));
   return <section className="schedule-section" aria-labelledby="schedule-heading">
     <div className="section-heading"><div><h2 id="schedule-heading">Current roster</h2><p>Pin commitments to keep them fixed during repair.</p></div><span className="count">{roster.shifts.filter(s=>s.volunteerId).length} / {roster.shifts.length} assigned</span></div>
@@ -15,6 +15,14 @@ export function Schedule({roster,onCancel,onPin}:{roster:Roster;onCancel:(id:str
         <div role="cell" className="row-actions"><button className={`pin-button ${s.pinned?'is-pinned':''}`} aria-label={`${s.pinned?'Unpin':'Pin'} ${s.title}`} aria-pressed={s.pinned} onClick={()=>onPin(s.id)}><Icon name="pin"/><span>{s.pinned?'Pinned':'Pin'}</span></button><button className="text-button cancel-button" disabled={!s.volunteerId||s.pinned} onClick={()=>onCancel(s.id)} aria-label={`Cancel ${s.title} assignment`}>Cancel</button></div>
       </div>)}
     </div>
-    {roster.absences.length>0&&<div className="absence-note"><span className="status-dot amber"/><p><strong>Recorded absence</strong>{roster.absences.map((a,i)=><span key={i}>{person(roster,a.volunteerId)} · {time(a.start)}–{time(a.end)}</span>)}</p></div>}
+    {roster.absences.length>0&&<section className="absence-manager" aria-labelledby="absences-heading">
+      <h3 id="absences-heading">Recorded absences</h3>
+      <p>If someone can attend again, clear their recorded absence. This does not restore assignments or override their saved availability.</p>
+      <ul>{roster.absences.map((a,i)=><li key={`${a.volunteerId}-${a.start}-${a.end}-${i}`}>
+        <div><strong>{person(roster,a.volunteerId)}</strong><span>{time(a.start)}–{time(a.end)} · {a.reason}</span></div>
+        <button className="secondary" onClick={()=>onClearAbsence(i)} aria-label={`Clear absence for ${person(roster,a.volunteerId)}, ${time(a.start)}–${time(a.end)}`}>Clear absence</button>
+      </li>)}</ul>
+      <small>Clearing an absence is local and undoable. No volunteer is notified.</small>
+    </section>}
   </section>;
 }
