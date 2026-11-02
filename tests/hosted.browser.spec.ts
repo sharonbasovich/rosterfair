@@ -343,6 +343,8 @@ test('clear a cancellation after repair without losing assignments, then undo th
   await expect(page.getByRole('heading', { name: 'Recorded absences' })).toHaveCount(0);
   expect(await schedule.innerText()).toBe(before);
   await expect(page.locator('.notice')).toContainText('Existing assignments are unchanged');
+  await expect(page.locator('.demo-action')).toContainText('The roster is assigned again.');
+  await expect(page.getByRole('button', {name:'Record demo cancellation',exact:true})).toBeDisabled();
   await page.getByRole('button', { name: 'Undo last change' }).click();
   await expect(page.getByRole('button', { name: /^Clear absence for/ })).toHaveCount(1);
   expect(await schedule.innerText()).toBe(before);
