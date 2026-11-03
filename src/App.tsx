@@ -56,13 +56,21 @@ export default function App() {
   }
   function invalidate() {stopSearch();setResult(null);setSelected(0);setError(null);}
   function edit(change:EditResult,message:string,focusNotice=false) {if(!change.ok){setNotice(change.error);if(focusNotice)requestAnimationFrame(()=>noticeRef.current?.focus());return;}invalidate();setSession(change.session);setViewHistory(h=>[...h.slice(-49),fixtureId]);setNotice(message);if(focusNotice)requestAnimationFrame(()=>noticeRef.current?.focus());}
+  function protectDrafts() {
+    if (!dirtyVolunteers.length) return false;
+    setNotice("Save or discard unsaved volunteer constraints before replacing the roster or undoing changes. Your draft is still here.");
+    reviewPending();
+    return true;
+  }
   function undoLastChange() {
+    if (protectDrafts()) return;
     const change=undoEdit(session);
     if(!change.ok){setNotice(change.error);return;}
     invalidate();setSession(change.session);setFixtureId(viewHistory.at(-1)??'custom');setViewHistory(h=>h.slice(0,-1));setEditorEpoch(n=>n+1);
     setNotice('Last local change undone. Find repairs again to refresh your options.');requestAnimationFrame(()=>noticeRef.current?.focus());
   }
   function chooseFixture(id:string) {
+    if (protectDrafts()) return;
     const file=exportRosterFile(loadFixture(id).roster);
     if(!file.ok){setNotice(file.error);return;}
     const change=applyRosterImport(session,file.text);
@@ -70,6 +78,7 @@ export default function App() {
     edit(change,'Demo loaded. Undo restores the previous roster.');setFixtureId(id);setEditorEpoch(n=>n+1);
   }
   function importRoster(source:string) {
+    if (protectDrafts()) return false;
     const change=applyRosterImport(session,source);
     if(!change.ok){setNotice(change.error);return false;}
     edit(change,'Roster imported locally. Undo restores the previous roster. Export JSON to keep future saved edits.');
@@ -120,7 +129,7 @@ export default function App() {
       <header className="page-header"><div><h1>One cancellation.<br/><span>A smaller ripple.</span></h1><p>Repair volunteer coverage while keeping existing commitments in view.</p></div><button className="secondary undo-button" disabled={session.history.length===0} onClick={undoLastChange}><Icon name="undo"/>Undo last change</button></header>
       <ol className="workflow" aria-label="Repair workflow"><li className="done"><span>1</span><a href="#inputs-heading">Review constraints</a></li><li className={open?'done':'current'}><span>2</span><a href="#schedule-heading">Record cancellation</a></li><li className={open?'current':''}><span>3</span><a href="#repair-heading">Compare & apply</a></li></ol>
       <div className="notice" role="status" aria-live="polite" ref={noticeRef} tabIndex={-1}><span className={`status-dot ${open?'amber':''}`}/>{notice}</div>
-      <RosterFiles roster={roster} onImport={importRoster} onNotice={setNotice}/>
+      <RosterFiles key={dirtyVolunteers.length > 0 ? 'pending-edits' : 'saved-inputs'} hasPendingEdits={dirtyVolunteers.length > 0} onReviewPending={reviewPending} roster={roster} onImport={importRoster} onNotice={setNotice}/>
       <div className="workspace-grid"><div className="roster-column">
         {fixture?<div className="demo-action"><div><strong>{fixtureId==='pin-conflict'?'Some commitments contradict each other.':assignedAfterChange?'The roster is assigned again.':'A volunteer can no longer make it.'}</strong><p>{fixtureId==='pin-conflict'?'Find repairs to inspect the pinned conflict. Unpin a conflicting assignment to resolve it.':assignedAfterChange?'Undo to compare another repair, reset the demo, or cancel a specific assignment below.':`Record the cancellation, then find a feasible repair.`}</p></div>{fixtureId!=='pin-conflict'&&<button className="secondary" disabled={assignedAfterChange||roster.absences.some(a=>a.reason===`Cancelled ${roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.title}`)||!roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.volunteerId||Boolean(roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.pinned)} onClick={()=>edit(cancelAssignment(session,fixture.cancelShiftId),'Cancellation recorded, with an absence for that time window. Find repairs to compare your options.',true)}>Record demo cancellation<Icon name="arrow"/></button>}</div>:<div className="demo-action"><div><strong>Your roster is ready to inspect.</strong><p>{roster.date} · Cancel a specific assignment below, or find repairs for open or conflicting slots.</p></div></div>}
         {result?.options[selected]&&<RepairPreview roster={roster} option={result.options[selected]} options={result.options} onSelect={setSelected} label={String.fromCharCode(65+selected)}/>}

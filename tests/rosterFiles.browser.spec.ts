@@ -52,11 +52,11 @@ test('download a repaired edited roster, close the tab, import the actual file a
   await expect(reopened.getByRole('button',{name:'Record demo cancellation',exact:true})).toBeEnabled();
 });
 
-test('rejected files preserve current assignments, preview, undo history and unsaved form drafts',async({page})=>{
+test('rejected files preserve current assignments, preview and undo history',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Record demo cancellation',exact:true}).click();
   await page.getByRole('button',{name:'Find feasible repairs',exact:true}).click();await expect(page.getByRole('radio')).toHaveCount(4);
   await page.locator('#volunteer-summary-alex').click();
-  const preference=page.getByRole('form',{name:'Edit Alex Rivera constraints'}).getByRole('spinbutton');await preference.fill('95');
+  const preference=page.getByRole('form',{name:'Edit Alex Rivera constraints'}).getByRole('spinbutton');
   const unknown=structuredClone(sample);unknown.roster.shifts[0].volunteerId='missing-volunteer';
   const duplicate=structuredClone(sample);duplicate.roster.volunteers[1].id=duplicate.roster.volunteers[0].id;
   const badTime=structuredClone(sample);badTime.roster.shifts[0].end=badTime.roster.shifts[0].start;
@@ -64,7 +64,7 @@ test('rejected files preserve current assignments, preview, undo history and uns
   for(const file of files) {
     await picker(page).setInputFiles(file);await expect(page.locator('.rf-file-error')).toBeVisible();await expect(dialog(page)).not.toBeVisible();
     await expect(page.locator('.count').first()).toHaveText('4 / 5 assigned');await expect(page.getByRole('radio')).toHaveCount(4);
-    await expect(preference).toHaveValue('95');await expect(picker(page)).toHaveValue('');
+    await expect(preference).toHaveValue('60');await expect(picker(page)).toHaveValue('');
   }
   await page.getByRole('button',{name:'Undo last change',exact:true}).click();await expect(page.locator('.count').first()).toHaveText('5 / 5 assigned');
   await expect(page.getByRole('button',{name:'Undo last change',exact:true})).toBeDisabled();
@@ -145,4 +145,63 @@ test('import confirmation is keyboard-contained, mobile-sized and accessible wit
     await confirm(page);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.emulateMedia({reducedMotion:'reduce'});expect(await page.locator('.rf-picker').evaluate(el=>getComputedStyle(el).transitionDuration)).toBe('0s');
   }
+});
+
+test('unsaved volunteer constraints survive reset, scenario and undo with actionable focus',async({page})=>{
+  await page.goto('/');
+  await page.getByRole('button',{name:'Record demo cancellation',exact:true}).click();
+  await page.locator('#volunteer-summary-eli').click();
+  const form=page.getByRole('form',{name:'Edit Eli Parker constraints'});
+  await form.getByRole('checkbox',{name:'repair',exact:true}).check();
+  for(let cycle=0;cycle<2;cycle++){
+    await page.getByRole('button',{name:'Reset this demo',exact:true}).click();
+    await expect(page.locator('#volunteer-summary-eli')).toBeFocused();
+    await expect(form.getByRole('checkbox',{name:'repair',exact:true})).toBeChecked();
+    await page.getByLabel('Try a scenario',{exact:true}).selectOption('impossible');
+    await expect(page.getByLabel('Try a scenario',{exact:true})).toHaveValue('chain');
+    await expect(form.getByRole('checkbox',{name:'repair',exact:true})).toBeChecked();
+    await page.getByRole('button',{name:'Undo last change',exact:true}).click();
+    await expect(form.getByRole('checkbox',{name:'repair',exact:true})).toBeChecked();
+    await expect(page.getByRole('row').filter({hasText:'Welcome desk'})).not.toContainText('Maya Chen');
+  }
+  await form.getByRole('button',{name:'Discard unsaved changes',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Unsaved volunteer constraints',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Undo last change',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Welcome desk'})).toContainText('Maya Chen');
+});
+
+test('pending edits prevent misleading export and file replacement until saved',async({page})=>{
+  await page.goto('/');
+  await page.locator('#volunteer-summary-eli').click();
+  const form=page.getByRole('form',{name:'Edit Eli Parker constraints'});
+  await form.getByRole('spinbutton').fill('90');
+  const downloads:string[]=[];page.on('download',download=>downloads.push(download.suggestedFilename()));
+  await page.getByRole('button',{name:'Export roster JSON',exact:true}).click();
+  await expect(page.locator('#volunteer-summary-eli')).toBeFocused();
+  await expect(form.getByRole('spinbutton')).toHaveValue('90');
+  await expect(picker(page)).toBeDisabled();
+  expect(downloads).toEqual([]);
+  await form.getByRole('button',{name:'Save constraints',exact:true}).click();
+  await expect(picker(page)).toBeEnabled();
+  const promise=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Export roster JSON',exact:true}).click();await promise;
+  await stage(page);await confirm(page);
+  await expect(page.getByRole('heading',{name:'Unsaved volunteer constraints',exact:true})).toHaveCount(0);
+});
+
+test('editing during a delayed import cancels the read and preserves the draft',async({page})=>{
+  type TestWindow=Window & {rfRelease?:()=>void};
+  await page.addInitScript(()=>{const original=File.prototype.arrayBuffer;File.prototype.arrayBuffer=async function(){const data=await original.call(this);await new Promise<void>(resolve=>{(window as TestWindow).rfRelease=resolve;});return data;};});
+  await page.goto('/');await page.locator('#volunteer-summary-eli').click();
+  await picker(page).setInputFiles(payload(sample));
+  await expect.poll(()=>page.evaluate(()=>typeof(window as TestWindow).rfRelease)).toBe('function');
+  const form=page.getByRole('form',{name:'Edit Eli Parker constraints'});
+  await form.getByRole('spinbutton').fill('90');
+  await expect(page.getByRole('button',{name:'Cancel file read'})).toHaveCount(0);
+  await page.evaluate(()=>{(window as TestWindow).rfRelease?.();});
+  await expect(dialog(page)).not.toBeVisible();
+  await expect(form.getByRole('spinbutton')).toHaveValue('90');
+  await expect(page.locator('.rail-content h2')).toHaveText('Campus repair café');
+  await form.getByRole('button',{name:'Discard unsaved changes',exact:true}).click();
+  await expect(picker(page)).toBeEnabled();
 });
