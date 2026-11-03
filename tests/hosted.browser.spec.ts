@@ -262,7 +262,7 @@ for (const width of [390, 1440]) test(`unsaved volunteer constraints guard repai
   await expect(page.getByRole('button', { name: 'Apply option A', exact: true })).toBeDisabled();
   expect(await page.locator('.schedule-section').textContent()).toBe(savedRoster);
   await page.locator('#volunteer-summary-eli').click();
-  await page.getByRole('button', { name: 'Review unsaved constraints' }).press('Enter');
+  await page.getByRole('button', { name: 'Review unsaved constraints', exact: true }).press('Enter');
   await expect(page.locator('#volunteer-summary-eli')).toBeFocused();
   await expect(form).toBeVisible();
   await page.screenshot({ path: `hosted-results/pending-constraints-${width}.png`, fullPage: true });
