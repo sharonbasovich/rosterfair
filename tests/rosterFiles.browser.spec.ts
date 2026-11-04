@@ -189,6 +189,62 @@ test('pending edits prevent misleading export and file replacement until saved',
   await expect(page.getByRole('heading',{name:'Unsaved volunteer constraints',exact:true})).toHaveCount(0);
 });
 
+test('clearing a saved zero workload protects the draft until discarded or corrected and saved',async({page},testInfo)=>{
+  await page.goto('/');
+  const summary=page.locator('#volunteer-summary-eli');
+  await summary.click();
+  const form=page.getByRole('form',{name:'Edit Eli Parker constraints'});
+  const preference=form.getByRole('spinbutton');
+  const save=form.getByRole('button',{name:'Save constraints',exact:true});
+  const discard=form.getByRole('button',{name:'Discard unsaved changes',exact:true});
+  const search=page.getByRole('button',{name:'Find feasible repairs',exact:true});
+  await preference.fill('0');await save.click();
+  await expect(summary).toContainText('0 min preferred');
+  await expect(preference).toHaveValue('0');
+  await expect(save).toBeDisabled();
+
+  // Equivalent valid numbers remain clean; an empty input is not a saved zero.
+  await preference.fill('0.0');
+  await expect(form).toContainText('Matches current roster');
+  await expect(discard).toBeDisabled();
+  await preference.fill('');
+  await expect(form).toContainText('Unsaved changes');
+  await expect(save).toBeEnabled();await expect(discard).toBeEnabled();
+  await expect(page.getByRole('heading',{name:'Unsaved volunteer constraints',exact:true})).toBeVisible();
+  await expect(search).toBeDisabled();await expect(picker(page)).toBeDisabled();
+  await save.click();
+  await expect(form.getByRole('alert')).toContainText('Preferred workload must be a whole number from 0 to 1,440 minutes.');
+  await expect(summary).toContainText('0 min preferred');
+  await page.getByRole('button',{name:'Reset this demo',exact:true}).click();
+  await expect(summary).toBeFocused();await expect(preference).toHaveValue('');
+  await expect(summary).toContainText('0 min preferred');
+  const downloads:string[]=[];page.on('download',download=>downloads.push(download.suggestedFilename()));
+  await page.getByRole('button',{name:'Export roster JSON',exact:true}).click();
+  await expect(page.locator('.notice')).toContainText('Unsaved inputs have not been exported.');
+  await expect(summary).toBeFocused();await expect(preference).toHaveValue('');
+  expect(downloads).toEqual([]);
+
+  await discard.click();
+  await expect(preference).toHaveValue('0');
+  await expect(form).toContainText('Matches current roster');
+  await expect(form.getByRole('alert')).toHaveCount(0);
+  await expect(save).toBeDisabled();await expect(discard).toBeDisabled();
+  await expect(page.getByRole('heading',{name:'Unsaved volunteer constraints',exact:true})).toHaveCount(0);
+  await expect(search).toBeEnabled();await expect(picker(page)).toBeEnabled();
+
+  await preference.fill('');await expect(discard).toBeEnabled();
+  await preference.fill('90');await save.click();
+  await expect(summary).toContainText('90 min preferred');
+  await expect(preference).toHaveValue('90');await expect(save).toBeDisabled();
+  await expect(search).toBeEnabled();await expect(picker(page)).toBeEnabled();
+  const downloadPromise=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Export roster JSON',exact:true}).click();
+  const download=await downloadPromise;
+  const savedPath=testInfo.outputPath('corrected-workload.rosterfair.json');await download.saveAs(savedPath);
+  const saved=JSON.parse(await readFile(savedPath,'utf8')) as RosterFileEnvelope;
+  expect(saved.roster.volunteers.find(v=>v.id==='eli')?.preferredMinutes).toBe(90);
+});
+
 test('editing during a delayed import cancels the read and preserves the draft',async({page})=>{
   type TestWindow=Window & {rfRelease?:()=>void};
   await page.addInitScript(()=>{const original=File.prototype.arrayBuffer;File.prototype.arrayBuffer=async function(){const data=await original.call(this);await new Promise<void>(resolve=>{(window as TestWindow).rfRelease=resolve;});return data;};});

@@ -37,8 +37,10 @@ function VolunteerForm({ volunteer, capabilities, onUpdate, onDirtyChange }: {
   const errorRef = useRef<HTMLDivElement>(null);
   const original = JSON.stringify({ capabilities: volunteer.capabilities.slice().sort(), availability: volunteer.availability, preferredMinutes: volunteer.preferredMinutes });
   const draftAvailability = ranges.map((range) => ({ start: parseTime(range.start), end: parseTime(range.end, true) }));
-  const draft = JSON.stringify({ capabilities: selected.slice().sort(), availability: draftAvailability, preferredMinutes: Number(preferred) });
-  const dirty = original !== draft;
+  const preferredMinutes = Number(preferred);
+  const preferredIsValid = preferred.trim() !== '' && Number.isInteger(preferredMinutes) && preferredMinutes >= 0 && preferredMinutes <= 1440;
+  const draft = JSON.stringify({ capabilities: selected.slice().sort(), availability: draftAvailability, preferredMinutes });
+  const dirty = !preferredIsValid || original !== draft;
   useEffect(() => {
     onDirtyChange(volunteer.id, dirty);
     return () => onDirtyChange(volunteer.id, false);
@@ -63,8 +65,7 @@ function VolunteerForm({ volunteer, capabilities, onUpdate, onDirtyChange }: {
       else if (start >= end) nextErrors.push(`Window ${index + 1}: the end must be later than the start on this event date.`);
       else availability.push({ start, end });
     });
-    const preferredMinutes = Number(preferred);
-    if (preferred.trim() === '' || !Number.isInteger(preferredMinutes) || preferredMinutes < 0 || preferredMinutes > 1440) {
+    if (!preferredIsValid) {
       nextErrors.push('Preferred workload must be a whole number from 0 to 1,440 minutes.');
     }
     setErrors(nextErrors);
