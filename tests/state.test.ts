@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { applyRepair, cancelAssignment, createSession, solveRepairs, togglePin, undoEdit, updateShift, updateVolunteer, type EditResult, type Roster, type RosterSession } from '../src/domain/index'
+import { applyRepair, cancelAssignment, clearAbsence, createSession, solveRepairs, togglePin, undoEdit, updateShift, updateVolunteer, type EditResult, type Roster, type RosterSession } from '../src/domain/index'
 import { independentFeasible } from './oracle'
 
 function fixture(): Roster {
@@ -116,4 +116,47 @@ test('apply revalidates tampered plans; invalid edits and unknown targets are re
   assert.equal(updateShift(session, 'unknown', { pinned: true }).ok, false)
   assert.equal(cancelAssignment(session, 'tech').ok, false, 'already open slot cannot be canceled again')
   assert.deepEqual(session, snapshot)
+})
+
+
+test('clear absence preserves subsequent edits and assignments, invalidates plans and is undoable', () => {
+  let session = success(cancelAssignment(createSession(fixture()), 'tech'))
+  session = success(updateVolunteer(session, 'b', { preferredMinutes: 30 }))
+  const plan = solveRepairs(session.roster).options[0]
+  const before = structuredClone(session)
+  session = success(clearAbsence(session, 0))
+  assert.deepEqual(session.roster.absences, [])
+  assert.deepEqual(session.roster.shifts, before.roster.shifts)
+  assert.deepEqual(session.roster.volunteers, before.roster.volunteers)
+  assert.equal(session.roster.shifts[0].volunteerId, null, 'no implicit reassignment')
+  assert.equal(applyRepair(session, plan).ok, false)
+  assert.equal(solveRepairs(session.roster).diagnostics.find(d => d.shiftId === 'tech')?.eligibleVolunteerIds.includes('a'), true)
+  const undone = success(undoEdit(session))
+  assert.deepEqual({...undone.roster, revision:before.roster.revision}, before.roster)
+  assert.deepEqual(before.roster.absences.length, 1, 'original session unmodified')
+})
+
+test('clear targets one interval only and rejects invalid indexes without mutation', () => {
+  const roster = fixture()
+  roster.absences = [{volunteerId:'a',start:0,end:30,reason:'First'}, {volunteerId:'a',start:30,end:60,reason:'Second'}]
+  const session = createSession(roster)
+  const before = structuredClone(session)
+  for (const index of [-1, 2, 0.5, NaN, Infinity]) assert.equal(clearAbsence(session,index).ok,false)
+  assert.deepEqual(session,before)
+  const cleared = success(clearAbsence(session,0))
+  assert.deepEqual(cleared.roster.absences,[roster.absences[1]])
+  assert.equal(solveRepairs(cleared.roster).diagnostics.find(d=>d.shiftId==='tech')?.eligibleVolunteerIds.includes('a'),false)
+})
+
+test('clearing an absence does not override saved availability or pins', () => {
+  let session = success(cancelAssignment(createSession(fixture()), 'tech'))
+  session = success(updateVolunteer(session, 'a', {availability: []}))
+  session = success(togglePin(session, 'desk'))
+  session = success(clearAbsence(session, 0))
+  const result = solveRepairs(session.roster)
+  assert.equal(result.diagnostics.find(d=>d.shiftId==='tech')?.eligibleVolunteerIds.includes('a'),false)
+  for (const option of result.options) {
+    assert.equal(option.assignments.desk,'c')
+    assert.notEqual(option.assignments.tech,'a')
+  }
 })

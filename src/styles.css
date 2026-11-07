@@ -10,3 +10,10 @@
 @media(max-width:1020px){.workspace-grid .repair-preview{order:1}.workspace-grid:has(.repair-preview) .repair-panel{order:2}.workspace-grid:has(.repair-preview) .schedule-section{order:3}.workspace-grid:has(.repair-preview) .policy{order:4}}
 .roster-column{display:contents}.workspace-grid .demo-action,.workspace-grid .repair-preview,.workspace-grid .schedule-section,.workspace-grid .policy{grid-column:1}.workspace-grid .demo-action,.workspace-grid .repair-preview{margin-bottom:0}.workspace-grid .repair-panel{grid-column:2;grid-row:1/span 3}.workspace-grid:has(.repair-preview) .repair-panel{grid-row:1/span 4}
 @media(max-width:1020px){.workspace-grid .repair-panel,.workspace-grid:has(.repair-preview) .repair-panel{grid-column:1;grid-row:auto}.workspace-grid .demo-action{order:0}.workspace-grid .repair-preview{order:1}.workspace-grid .repair-panel{order:2}.workspace-grid .schedule-section{order:3}.workspace-grid .policy{order:4}}
+
+.absence-manager{margin-top:18px;padding:20px;border:1px solid var(--line,#d9e2e0);border-radius:14px;background:#fffaf0}
+.capability-checks label{min-width:0;max-width:100%;overflow-wrap:anywhere}.capability-checks input{flex:none}
+.absence-manager h3{margin:0 0 8px;font-size:16px}.absence-manager p,.absence-manager small{color:#53635e;font-size:13px;line-height:1.6}
+.absence-manager ul{list-style:none;margin:16px 0;padding:0}.absence-manager li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #e6dfce}
+.absence-manager li div{min-width:0}.absence-manager li strong,.absence-manager li span{display:block;overflow-wrap:anywhere}.absence-manager li span{font-size:12px;line-height:1.6;color:#53635e}.absence-manager button{flex-shrink:0}
+@media(max-width:600px){.absence-manager li{align-items:flex-start;flex-direction:column}.absence-manager button{min-height:44px}}

@@ -6,9 +6,29 @@ RosterFair is a small local workbench for adult student clubs. It checks explici
 
 Version **0.3.0** adds an interactive before/after roster preview to the manual JSON save and restore workflow. The original application code is free to use under the [MIT license](LICENSE). Dependencies retain their own licenses; see [attribution](THIRD-PARTY.md) and [runtime notices](THIRD_PARTY_NOTICES.txt).
 
+## Browser demo
+
+[Try RosterFair in your browser](https://sharonbasovich.github.io/rosterfair/).
+
+The static browser build runs the same repair engine and synthetic examples without installing Node.js. It does not require an account. The downloadable local version remains available and unchanged.
+
+The hosting service receives ordinary requests for the page, JavaScript, styles and worker. Roster edits and repair calculations happen in browser memory; the app has no upload API, analytics or remote storage. Dedicated Chromium tests observe same-origin static GET requests only during cancellation, comparison, apply, undo and edits. Reloading resets the unsaved roster. Use synthetic data for a public demo; use the downloadable local version when offline operation matters.
+
+To reproduce the project-prefix build and browser checks:
+
+```text
+npm ci
+npm run build:hosted
+node scripts/serve-hosted.mjs
+# In another terminal:
+npm run test:hosted
+```
+
+Open **http://127.0.0.1:4174/rosterfair/**. Publish the **contents** of `hosted-site/rosterfair/` at the GitHub Pages project prefix `/rosterfair/`; do not publish its parent directory at that prefix. The build includes application and third-party notices.
+
 ## Run locally
 
-Use **Node.js 22.14 or newer** and a modern browser. The CI workflow targets Node 24. No account is required. No hosted app is provided.
+Use **Node.js 22.14 or newer** and a modern browser. The CI workflow targets Node 24. No account is required.
 
 For the compiled release ZIP:
 
@@ -36,7 +56,7 @@ Dependency installation requires network access. The built app makes no external
 4. Use **Compare repair** in the preview or the option radios at the repair desk. Both controls select the same proposal. The preview starts with **Changes only** enabled; turn it off to inspect every role, including preserved pins and gaps. Open a role to inspect its requirements, stated availability and the proposed assignees of the volunteer's current roles. Both A and B cover all five slots and move one existing assignment; their soft preference costs differ.
 5. Explicitly apply an option. **Undo last change** restores the previous roster. Searching or selecting an option alone never changes assignments.
 
-Try **No complete repair** to see a proven coverage shortfall, or **Contradictory pins** to see a fixed-assignment conflict. The app does not silently relax a pin. Volunteer inputs and role requirements can be edited; saved changes invalidate old repair proposals.
+Try **No complete repair** to see a proven coverage shortfall, or **Contradictory pins** to see a fixed-assignment conflict. The app does not silently relax a pin. Volunteer inputs and role requirements can be edited; saved changes invalidate old repair proposals. Unsaved volunteer constraints pause search and prevent applying a repair. The repair desk names pending volunteers and links back to their forms; save or discard each draft to continue. Comparisons retained while editing use the previously saved inputs.
 
 **Preview only** and **Not applied** distinguish a proposal from the current roster below it. Timeline bars show role times, not volunteer availability. A gap left open says **Still open**; a currently assigned slot that a proposal empties says **Becomes open**. The current roster and undo history do not change while comparing or inspecting. On small screens, the preview and repair desk appear together before the saved roster, in the same order as keyboard navigation.
 
@@ -64,6 +84,8 @@ The app offers up to four repair options. Apply rechecks the constraints and rej
 
 The working roster lives in memory. There is **no automatic persistence**: refreshing or reopening starts a demo.
 
+Pending volunteer forms and roster changes request the browser's standard warning before reload, navigation or tab closure. Unchanged demos and the most recently imported roster do not need the warning; Undo removes it when the current data again matches one of those copies. Exporting does not clear it because the app cannot confirm that the browser saved the download. After verifying your file, you can choose to leave in the browser prompt. Some browsers and mobile app closures may not show a prompt, so export important changes before leaving. Repair previews and undo history are not protected or saved by this warning.
+
 Save open volunteer forms, then select **Export roster JSON**. Role requirements update immediately. Export includes the saved event, volunteer inputs, shifts, assignments, pins and absences. It excludes unsaved form input, repair previews, undo history and session metadata.
 
 On a later visit, choose the JSON file and review its preview. **Cancel** or Escape keeps the current roster. **Import roster** replaces it and discards unsaved form inputs. Undo can restore the previous saved roster and event context across imports and demo changes, within the current session's **50-snapshot** history. That history is not stored in files.
@@ -81,3 +103,12 @@ Version 0.3.0 passed **35 domain/state tests**, **21 production Chrome browser t
 This prototype supports a single local day. It has no multiuser collaboration, notifications, timezone conversion, overnight shifts, travel/rest rules or qualification expiry. It is not designed for employment, emergency or medical staffing. No real organizer study, real volunteer-data evaluation or measured social-impact claim has been made. Safari, Firefox, physical devices and screen readers remain untested; automated checks are not accessibility certification.
 
 Original source, synthetic fixtures and custom icons were created by **Sharon Basovich with Codex AI assistance on October 25-27, 2026**. AI assistance included design, implementation and verification; Claude through Kiro provided bounded static review for v0.3.0. See [THIRD-PARTY.md](THIRD-PARTY.md) for dependency attribution and [release notes](release-notes-v0.3.0.md) for this version.
+
+
+### A volunteer becomes available again
+
+In Current roster → Recorded absences, choose **Clear absence** for the relevant person and interval. This removes only that recorded constraint: saved availability and other absences still apply. Existing assignments, subsequent edits and pins remain unchanged; no one is reassigned or notified. Previous repair proposals are cleared. Find repairs again to use the updated constraints, or Undo last change to restore the absence. Export JSON to retain the change.
+
+### Inspect an open role in a repair
+
+For a partial proposal, open **Inspect why these roles are open** at the repair desk. Each role left open, including a role that becomes open, lists hard exclusions and competing assignments in the selected option. Switching options updates these explanations. These individual candidate checks are not a proof that every other repair fails; the search status separately states whether maximum coverage was proven or the search was limited. The original direct-replacement checks remain labeled as current-roster checks.
