@@ -6,6 +6,7 @@ import './RosterFiles.css';
 export interface RosterFilesProps {
   roster: Roster;
   hasPendingEdits?: boolean;
+  warnOnExit?: boolean;
   onReviewPending?: () => void;
   onImport: (source: string) => boolean;
   onNotice: (message: string) => void;
@@ -21,7 +22,7 @@ interface StagedRoster {
 
 interface FileError { message: string; issues: { path: string; message: string }[] }
 
-export function RosterFiles({ roster, onImport, onNotice, hasPendingEdits = false, onReviewPending }: RosterFilesProps) {
+export function RosterFiles({ roster, onImport, onNotice, hasPendingEdits = false, onReviewPending, warnOnExit = false }: RosterFilesProps) {
   const id = useId();
   const [reading, setReading] = useState(false);
   const [staged, setStaged] = useState<StagedRoster | null>(null);
@@ -201,6 +202,7 @@ export function RosterFiles({ roster, onImport, onNotice, hasPendingEdits = fals
   return <section className="rf-files" aria-labelledby={`${id}-heading`}>
     <div className="rf-files-heading"><div><h2 id={`${id}-heading`}>Keep a local roster copy</h2><p>Export saved assignments, pins, volunteer inputs and absences. Save any open forms first; unsaved form inputs are not included.</p></div><span className="rf-format">RosterFair JSON · version 1</span></div>
     <p className="rf-privacy">Files stay on your device; this app does not upload them. Exports include names, availability and capabilities. Share them carefully.</p>
+    {warnOnExit && <p className="rf-exit-warning" role="status">Changes stay in this tab. Save or discard open forms, then export the roster before leaving. Your browser may warn on exit, even after an export: this app cannot confirm that the download was saved. The warning does not save your work.</p>}
     {hasPendingEdits && <p role="status">Save or discard unsaved volunteer constraints before exporting or importing. <button type="button" className="secondary" onClick={onReviewPending}>Review unsaved constraints before file actions</button></p>}
     <div className="rf-file-actions">
       <button type="button" className="secondary rf-export" onClick={exportCurrent}>Export roster JSON</button>

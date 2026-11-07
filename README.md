@@ -84,6 +84,8 @@ The app offers up to four repair options. Apply rechecks the constraints and rej
 
 The working roster lives in memory. There is **no automatic persistence**: refreshing or reopening starts a demo.
 
+Pending volunteer forms and roster changes request the browser's standard warning before reload, navigation or tab closure. Unchanged demos and the most recently imported roster do not need the warning; Undo removes it when the current data again matches one of those copies. Exporting does not clear it because the app cannot confirm that the browser saved the download. After verifying your file, you can choose to leave in the browser prompt. Some browsers and mobile app closures may not show a prompt, so export important changes before leaving. Repair previews and undo history are not protected or saved by this warning.
+
 Save open volunteer forms, then select **Export roster JSON**. Role requirements update immediately. Export includes the saved event, volunteer inputs, shifts, assignments, pins and absences. It excludes unsaved form input, repair previews, undo history and session metadata.
 
 On a later visit, choose the JSON file and review its preview. **Cancel** or Escape keeps the current roster. **Import roster** replaces it and discards unsaved form inputs. Undo can restore the previous saved roster and event context across imports and demo changes, within the current session's **50-snapshot** history. That history is not stored in files.

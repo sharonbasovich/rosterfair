@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+
+// These suites intentionally reset pages; exit-warning behavior has its own suite.
+test.beforeEach(({page})=>{page.on('dialog',async dialog=>{expect(dialog.type()).toBe('beforeunload');await dialog.accept();});});
 import AxeBuilder from '@axe-core/playwright';
 
 async function search(page:Page) {

@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+
+// These suites intentionally reset pages; exit-warning behavior has its own suite.
+test.beforeEach(({page})=>{page.on('dialog',async dialog=>{expect(dialog.type()).toBe('beforeunload');await dialog.accept();});});
 import AxeBuilder from '@axe-core/playwright';
 
 test('missing worker remains explicit and allows retry without changing assignments', async ({ page }) => {

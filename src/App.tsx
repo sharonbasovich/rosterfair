@@ -11,6 +11,9 @@ import { RosterFiles } from './components/RosterFiles';
 import { time } from './format';
 import { RepairPreview } from './components/RepairPreview';
 import { readWorkerReply } from './workerReply';
+import { needsExitWarning, retainedRosterKey, warnBeforeExit } from './exitWarning';
+
+const demoRosterKeys = DEMO_FIXTURES.map(fixture => retainedRosterKey(fixture.roster));
 
 export default function App() {
   const [fixtureId,setFixtureId]=useState('chain');
@@ -23,6 +26,9 @@ export default function App() {
   const [editorEpoch,setEditorEpoch]=useState(0);
   const [viewHistory,setViewHistory]=useState<string[]>([]);
   const [dirtyVolunteers,setDirtyVolunteers]=useState<string[]>([]);
+  // Imported data already exists in the selected local file. An export click
+  // alone cannot prove a download completed, so it never clears this warning.
+  const [importedRosterKey,setImportedRosterKey]=useState<string|null>(null);
   const worker=useRef<Worker|null>(null);
   const searchTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const noticeRef=useRef<HTMLDivElement>(null);
@@ -38,6 +44,12 @@ export default function App() {
     }
   },[]);
   const roster=session.roster;
+  const warnOnExit=needsExitWarning(roster,importedRosterKey ? [...demoRosterKeys,importedRosterKey] : demoRosterKeys,dirtyVolunteers.length>0);
+  useEffect(()=>{
+    if(!warnOnExit)return;
+    window.addEventListener('beforeunload',warnBeforeExit);
+    return ()=>window.removeEventListener('beforeunload',warnBeforeExit);
+  },[warnOnExit]);
   const pendingNames=roster.volunteers.filter(v=>dirtyVolunteers.includes(v.id)).map(v=>v.name);
   function reviewPending() {
     const summary=document.getElementById(`volunteer-summary-${dirtyVolunteers[0]}`);
@@ -82,6 +94,7 @@ export default function App() {
     const change=applyRosterImport(session,source);
     if(!change.ok){setNotice(change.error);return false;}
     edit(change,'Roster imported locally. Undo restores the previous roster. Export JSON to keep future saved edits.');
+    setImportedRosterKey(retainedRosterKey(change.session.roster));
     setFixtureId('custom');setEditorEpoch(n=>n+1);return true;
   }
   function findRepairs() {
@@ -129,7 +142,7 @@ export default function App() {
       <header className="page-header"><div><h1>One cancellation.<br/><span>A smaller ripple.</span></h1><p>Repair volunteer coverage while keeping existing commitments in view.</p></div><button className="secondary undo-button" disabled={session.history.length===0} onClick={undoLastChange}><Icon name="undo"/>Undo last change</button></header>
       <ol className="workflow" aria-label="Repair workflow"><li className="done"><span>1</span><a href="#inputs-heading">Review constraints</a></li><li className={open?'done':'current'}><span>2</span><a href="#schedule-heading">Record cancellation</a></li><li className={open?'current':''}><span>3</span><a href="#repair-heading">Compare & apply</a></li></ol>
       <div className="notice" role="status" aria-live="polite" ref={noticeRef} tabIndex={-1}><span className={`status-dot ${open?'amber':''}`}/>{notice}</div>
-      <RosterFiles key={dirtyVolunteers.length > 0 ? 'pending-edits' : 'saved-inputs'} hasPendingEdits={dirtyVolunteers.length > 0} onReviewPending={reviewPending} roster={roster} onImport={importRoster} onNotice={setNotice}/>
+      <RosterFiles key={dirtyVolunteers.length > 0 ? 'pending-edits' : 'saved-inputs'} hasPendingEdits={dirtyVolunteers.length > 0} onReviewPending={reviewPending} roster={roster} onImport={importRoster} onNotice={setNotice} warnOnExit={warnOnExit}/>
       <div className="workspace-grid"><div className="roster-column">
         {fixture?<div className="demo-action"><div><strong>{fixtureId==='pin-conflict'?'Some commitments contradict each other.':assignedAfterChange?'The roster is assigned again.':'A volunteer can no longer make it.'}</strong><p>{fixtureId==='pin-conflict'?'Find repairs to inspect the pinned conflict. Unpin a conflicting assignment to resolve it.':assignedAfterChange?'Undo to compare another repair, reset the demo, or cancel a specific assignment below.':`Record the cancellation, then find a feasible repair.`}</p></div>{fixtureId!=='pin-conflict'&&<button className="secondary" disabled={assignedAfterChange||roster.absences.some(a=>a.reason===`Cancelled ${roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.title}`)||!roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.volunteerId||Boolean(roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.pinned)} onClick={()=>edit(cancelAssignment(session,fixture.cancelShiftId),'Cancellation recorded, with an absence for that time window. Find repairs to compare your options.',true)}>Record demo cancellation<Icon name="arrow"/></button>}</div>:<div className="demo-action"><div><strong>Your roster is ready to inspect.</strong><p>{roster.date} · Cancel a specific assignment below, or find repairs for open or conflicting slots.</p></div></div>}
         {result?.options[selected]&&<RepairPreview roster={roster} option={result.options[selected]} options={result.options} onSelect={setSelected} label={String.fromCharCode(65+selected)}/>}
