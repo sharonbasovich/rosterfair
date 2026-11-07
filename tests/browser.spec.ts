@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+
+// These suites intentionally reset pages; exit-warning behavior has its own suite.
+test.beforeEach(({page})=>{page.on('dialog',async dialog=>{expect(dialog.type()).toBe('beforeunload');await dialog.accept();});});
 import AxeBuilder from '@axe-core/playwright';
 
 async function search(page:Page) {
@@ -107,6 +110,8 @@ test('initial roster, expanded form, impossible case and pin conflicts pass auto
   const form=page.getByRole('form',{name:'Edit Maya Chen constraints'});
   await form.getByLabel('Maya Chen window 1 end',{exact:true}).fill('09:00');
   await form.getByRole('button',{name:'Save constraints',exact:true}).click();await audit();
+  // The invalid draft must be explicitly discarded before changing scenarios.
+  await form.getByRole('button',{name:'Discard unsaved changes',exact:true}).click();
   await page.getByLabel('Try a scenario').selectOption('impossible');
   await page.getByRole('button',{name:'Record demo cancellation',exact:true}).click();await search(page);await audit();
   await page.getByLabel('Try a scenario').selectOption('pin-conflict');await search(page);await audit();

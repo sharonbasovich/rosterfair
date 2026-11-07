@@ -1,10 +1,11 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { Roster, Volunteer } from '../domain/types';
 import './VolunteerEditor.css';
 
 export interface VolunteerEditorProps {
   roster: Roster;
   onUpdate: (volunteerId: string, patch: Partial<Volunteer>) => void;
+  onDirtyChange: (volunteerId: string, dirty: boolean) => void;
 }
 
 interface DraftRange { start: string; end: string }
@@ -20,10 +21,11 @@ function parseTime(value: string, allowMidnightEnd = false): number | null {
   return hours * 60 + minutes;
 }
 
-function VolunteerForm({ volunteer, capabilities, onUpdate }: {
+function VolunteerForm({ volunteer, capabilities, onUpdate, onDirtyChange }: {
   volunteer: Volunteer;
   capabilities: string[];
   onUpdate: VolunteerEditorProps['onUpdate'];
+  onDirtyChange: VolunteerEditorProps['onDirtyChange'];
 }) {
   const id = useId();
   const [selected, setSelected] = useState(volunteer.capabilities);
@@ -35,8 +37,21 @@ function VolunteerForm({ volunteer, capabilities, onUpdate }: {
   const errorRef = useRef<HTMLDivElement>(null);
   const original = JSON.stringify({ capabilities: volunteer.capabilities.slice().sort(), availability: volunteer.availability, preferredMinutes: volunteer.preferredMinutes });
   const draftAvailability = ranges.map((range) => ({ start: parseTime(range.start), end: parseTime(range.end, true) }));
-  const draft = JSON.stringify({ capabilities: selected.slice().sort(), availability: draftAvailability, preferredMinutes: Number(preferred) });
-  const dirty = original !== draft;
+  const preferredMinutes = Number(preferred);
+  const preferredIsValid = preferred.trim() !== '' && Number.isInteger(preferredMinutes) && preferredMinutes >= 0 && preferredMinutes <= 1440;
+  const draft = JSON.stringify({ capabilities: selected.slice().sort(), availability: draftAvailability, preferredMinutes });
+  const dirty = !preferredIsValid || original !== draft;
+  useEffect(() => {
+    onDirtyChange(volunteer.id, dirty);
+    return () => onDirtyChange(volunteer.id, false);
+  }, [volunteer.id, dirty, onDirtyChange]);
+
+  function discard() {
+    setSelected(volunteer.capabilities);
+    setRanges(volunteer.availability.map(range => ({ start: displayTime(range.start), end: displayTime(range.end) })));
+    setPreferred(String(volunteer.preferredMinutes));
+    setErrors([]);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,8 +65,7 @@ function VolunteerForm({ volunteer, capabilities, onUpdate }: {
       else if (start >= end) nextErrors.push(`Window ${index + 1}: the end must be later than the start on this event date.`);
       else availability.push({ start, end });
     });
-    const preferredMinutes = Number(preferred);
-    if (preferred.trim() === '' || !Number.isInteger(preferredMinutes) || preferredMinutes < 0 || preferredMinutes > 1440) {
+    if (!preferredIsValid) {
       nextErrors.push('Preferred workload must be a whole number from 0 to 1,440 minutes.');
     }
     setErrors(nextErrors);
@@ -111,16 +125,16 @@ function VolunteerForm({ volunteer, capabilities, onUpdate }: {
     </div>
 
     {errors.length > 0 && <div className="ve-errors" role="alert" tabIndex={-1} ref={errorRef}><p>Check these inputs before saving:</p><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
-    <div className="ve-actions"><span>{dirty ? 'Unsaved changes' : 'Matches current roster'}</span><button type="submit" className="ve-save" disabled={!dirty}>Save constraints</button></div>
+    <div className="ve-actions"><span>{dirty ? 'Unsaved changes' : 'Matches current roster'}</span><button type="button" disabled={!dirty} onClick={discard}>Discard unsaved changes</button><button type="submit" className="ve-save" disabled={!dirty}>Save constraints</button></div>
   </form>;
 }
 
-export function VolunteerEditor({ roster, onUpdate }: VolunteerEditorProps) {
+export function VolunteerEditor({ roster, onUpdate, onDirtyChange }: VolunteerEditorProps) {
   const capabilities = [...new Set([...roster.volunteers.flatMap((volunteer) => volunteer.capabilities), ...roster.shifts.flatMap((shift) => shift.requires)])].sort();
   return <div className="ve-list">
     {roster.volunteers.map((volunteer) => <details className="ve-volunteer" key={volunteer.id}>
       <summary id={`volunteer-summary-${volunteer.id}`}><span className="ve-name">{volunteer.name}</span><span className="ve-summary">{volunteer.capabilities.length} {volunteer.capabilities.length === 1 ? 'capability' : 'capabilities'} <span aria-hidden="true">/</span> {volunteer.preferredMinutes} min preferred</span><svg className="ve-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></summary>
-      <VolunteerForm key={JSON.stringify(volunteer)} volunteer={volunteer} capabilities={capabilities} onUpdate={onUpdate} />
+      <VolunteerForm key={JSON.stringify(volunteer)} volunteer={volunteer} capabilities={capabilities} onUpdate={onUpdate} onDirtyChange={onDirtyChange} />
     </details>)}
   </div>;
 }

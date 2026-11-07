@@ -29,6 +29,16 @@ export function cancelAssignment(session: RosterSession, shiftId: string): EditR
   return commit(session, roster)
 }
 
+/** Clears only this recorded interval; existing assignments and other absences stay intact. */
+export function clearAbsence(session: RosterSession, absenceIndex: number): EditResult {
+  if (!Number.isInteger(absenceIndex) || absenceIndex < 0 || absenceIndex >= session.roster.absences.length) {
+    return { ok: false, error: 'That recorded absence no longer exists.' }
+  }
+  const roster = clone(session.roster)
+  roster.absences.splice(absenceIndex, 1)
+  return commit(session, roster)
+}
+
 export function applyRepair(session: RosterSession, option: RepairOption): EditResult {
   if (option.baseSignature !== rosterSignature(session.roster)) return { ok: false, error: 'The roster changed after this plan was calculated. Find repairs again.' }
   const issues = validateAssignments(session.roster, option.assignments)

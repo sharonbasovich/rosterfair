@@ -5,6 +5,9 @@ import './RosterFiles.css';
 
 export interface RosterFilesProps {
   roster: Roster;
+  hasPendingEdits?: boolean;
+  warnOnExit?: boolean;
+  onReviewPending?: () => void;
   onImport: (source: string) => boolean;
   onNotice: (message: string) => void;
 }
@@ -19,7 +22,7 @@ interface StagedRoster {
 
 interface FileError { message: string; issues: { path: string; message: string }[] }
 
-export function RosterFiles({ roster, onImport, onNotice }: RosterFilesProps) {
+export function RosterFiles({ roster, onImport, onNotice, hasPendingEdits = false, onReviewPending, warnOnExit = false }: RosterFilesProps) {
   const id = useId();
   const [reading, setReading] = useState(false);
   const [staged, setStaged] = useState<StagedRoster | null>(null);
@@ -88,6 +91,7 @@ export function RosterFiles({ roster, onImport, onNotice }: RosterFilesProps) {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = '';
     if (!file) return;
+    if (hasPendingEdits) { onNotice("Save or discard volunteer edits before importing a roster."); onReviewPending?.(); return; }
     const token = ++readToken.current;
     setError(null);
     setExportNote(null);
@@ -135,6 +139,7 @@ export function RosterFiles({ roster, onImport, onNotice }: RosterFilesProps) {
   }
 
   function exportCurrent() {
+    if (hasPendingEdits) { onNotice("Save or discard volunteer edits before exporting. Unsaved inputs have not been exported."); onReviewPending?.(); return; }
     setError(null);
     setExportNote(null);
     const exported = exportRosterFile(roster);
@@ -197,11 +202,13 @@ export function RosterFiles({ roster, onImport, onNotice }: RosterFilesProps) {
   return <section className="rf-files" aria-labelledby={`${id}-heading`}>
     <div className="rf-files-heading"><div><h2 id={`${id}-heading`}>Keep a local roster copy</h2><p>Export saved assignments, pins, volunteer inputs and absences. Save any open forms first; unsaved form inputs are not included.</p></div><span className="rf-format">RosterFair JSON · version 1</span></div>
     <p className="rf-privacy">Files stay on your device; this app does not upload them. Exports include names, availability and capabilities. Share them carefully.</p>
+    {warnOnExit && <p className="rf-exit-warning" role="status">Changes stay in this tab. Save or discard open forms, then export the roster before leaving. Your browser may warn on exit, even after an export: this app cannot confirm that the download was saved. The warning does not save your work.</p>}
+    {hasPendingEdits && <p role="status">Save or discard unsaved volunteer constraints before exporting or importing. <button type="button" className="secondary" onClick={onReviewPending}>Review unsaved constraints before file actions</button></p>}
     <div className="rf-file-actions">
       <button type="button" className="secondary rf-export" onClick={exportCurrent}>Export roster JSON</button>
-      <label className={`rf-picker ${reading ? 'rf-picker-disabled' : ''}`}>
+      <label className={`rf-picker ${reading || hasPendingEdits ? 'rf-picker-disabled' : ''}`}>
         Choose JSON file
-        <input ref={pickerRef} type="file" accept=".json,application/json" aria-label="Choose roster JSON file" disabled={reading} onChange={(event) => { void chooseFile(event); }} aria-describedby={`${id}-file-help`} />
+        <input ref={pickerRef} type="file" accept=".json,application/json" aria-label="Choose roster JSON file" disabled={reading || hasPendingEdits} onChange={(event) => { void chooseFile(event); }} aria-describedby={`${id}-file-help`} />
       </label>
       {reading && <button type="button" className="secondary rf-cancel-read" onClick={cancelRead}>Cancel file read</button>}
     </div>
@@ -214,7 +221,7 @@ export function RosterFiles({ roster, onImport, onNotice }: RosterFilesProps) {
       {staged && <div className="rf-dialog-content">
         <h2 id={`${id}-preview-heading`}>Replace the current roster?</h2>
         <div className="rf-dialog-scroll" role="region" aria-label="Roster file preview details" tabIndex={0}>
-        <p id={`${id}-preview-description`} className="rf-dialog-intro">Importing replaces the current roster and unsaved form inputs, and clears repair previews. Undo restores the previous saved local roster.</p>
+        <p id={`${id}-preview-description`} className="rf-dialog-intro">Importing replaces the current saved roster and clears repair previews. Save or discard volunteer edits first. Undo restores the previous saved local roster.</p>
         <dl className="rf-preview">
           <div><dt>Event</dt><dd>{staged.roster.title}</dd></div>
           <div><dt>Event date</dt><dd>{staged.roster.date}</dd></div>
