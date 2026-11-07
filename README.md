@@ -108,3 +108,7 @@ Original source, synthetic fixtures and custom icons were created by **Sharon Ba
 ### A volunteer becomes available again
 
 In Current roster → Recorded absences, choose **Clear absence** for the relevant person and interval. This removes only that recorded constraint: saved availability and other absences still apply. Existing assignments, subsequent edits and pins remain unchanged; no one is reassigned or notified. Previous repair proposals are cleared. Find repairs again to use the updated constraints, or Undo last change to restore the absence. Export JSON to retain the change.
+
+### Inspect an open role in a repair
+
+For a partial proposal, open **Inspect why these roles are open** at the repair desk. Each role left open, including a role that becomes open, lists hard exclusions and competing assignments in the selected option. Switching options updates these explanations. These individual candidate checks are not a proof that every other repair fails; the search status separately states whether maximum coverage was proven or the search was limited. The original direct-replacement checks remain labeled as current-roster checks.
