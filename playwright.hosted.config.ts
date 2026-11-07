@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 export default defineConfig({
-  testDir: './tests', testMatch: ['hosted.browser.spec.ts', 'proposalGaps.browser.spec.ts','capabilityLayout.browser.spec.ts'], workers: 1,
+  testDir: './tests', testMatch: ['hosted.browser.spec.ts', 'proposalGaps.browser.spec.ts','capabilityLayout.browser.spec.ts','draftCapabilities.browser.spec.ts'], workers: 1,
   outputDir: 'hosted-results',
   reporter: [['list'], ['json', { outputFile: 'hosted-results/results.json' }]],
   use: {

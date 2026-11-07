@@ -29,6 +29,11 @@ function VolunteerForm({ volunteer, capabilities, onUpdate, onDirtyChange }: {
 }) {
   const id = useId();
   const [selected, setSelected] = useState(volunteer.capabilities);
+  // Keep draft choices visible even when another saved edit removes their last
+  // roster source. Retain touched choices until Save/Discard so unchecking one
+  // does not remove the focused control or prevent checking it again.
+  const [editedCapabilities, setEditedCapabilities] = useState<string[]>([]);
+  const capabilityChoices = [...new Set([...capabilities, ...selected, ...editedCapabilities])].sort();
   const [ranges, setRanges] = useState<DraftRange[]>(volunteer.availability.map((range) => ({
     start: displayTime(range.start), end: displayTime(range.end),
   })));
@@ -48,6 +53,7 @@ function VolunteerForm({ volunteer, capabilities, onUpdate, onDirtyChange }: {
 
   function discard() {
     setSelected(volunteer.capabilities);
+    setEditedCapabilities([]);
     setRanges(volunteer.availability.map(range => ({ start: displayTime(range.start), end: displayTime(range.end) })));
     setPreferred(String(volunteer.preferredMinutes));
     setErrors([]);
@@ -82,8 +88,9 @@ function VolunteerForm({ volunteer, capabilities, onUpdate, onDirtyChange }: {
       <legend>Capabilities <span className="ve-kind">Hard constraint</span></legend>
       <p className="ve-help">Only capabilities explicitly checked here can satisfy a shift requirement.</p>
       <div className="ve-capabilities">
-        {capabilities.map((capability) => <label className="ve-check" key={capability}>
+        {capabilityChoices.map((capability) => <label className="ve-check" key={capability}>
           <input type="checkbox" checked={selected.includes(capability)} onChange={(event) => {
+            setEditedCapabilities(previous => previous.includes(capability) ? previous : [...previous, capability]);
             setSelected(event.target.checked ? [...selected, capability] : selected.filter((item) => item !== capability));
           }} />
           <span>{capability}</span>
