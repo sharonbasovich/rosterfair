@@ -88,7 +88,7 @@ Pending volunteer forms and roster changes request the browser's standard warnin
 
 Save open volunteer forms, then select **Export roster JSON**. Role requirements update immediately. Export includes the saved event, volunteer inputs, shifts, assignments, pins and absences. It excludes unsaved form input, repair previews, undo history and session metadata.
 
-On a later visit, choose the JSON file and review its preview. **Cancel** or Escape keeps the current roster. **Import roster** replaces it and discards unsaved form inputs. Undo can restore the previous saved roster and event context across imports and demo changes, within the current session's **50-snapshot** history. That history is not stored in files.
+On a later visit, choose the JSON file and review its preview. **Cancel** or Escape keeps the current roster. Save or discard open volunteer forms first; import is blocked while those drafts remain. **Import roster** replaces the saved roster and clears repair previews. Undo can restore the previous saved roster and event context across imports and demo changes, within the current session's **50-snapshot** history. That history is not stored in files.
 
 The format is strict version 1 JSON, capped at **131,072 UTF-8 bytes (128 KiB)**. Unknown properties, invalid references, unsupported versions and malformed data are rejected without changing the saved roster or undo history. Valid drafts with unresolved hard constraints show warnings and require explicit acknowledgment before import. Their assignments and pins are preserved; acknowledgment does not bypass constraints. Saved edits also pass the file-capacity checks, and export never truncates data to fit.
 
@@ -112,3 +112,12 @@ In Current roster → Recorded absences, choose **Clear absence** for the releva
 ### Inspect an open role in a repair
 
 For a partial proposal, open **Inspect why these roles are open** at the repair desk. Each role left open, including a role that becomes open, lists hard exclusions and competing assignments in the selected option. Switching options updates these explanations. These individual candidate checks are not a proof that every other repair fails; the search status separately states whether maximum coverage was proven or the search was limited. The original direct-replacement checks remain labeled as current-roster checks.
+
+
+## Print a one-day handoff
+
+Choose **Review printable roster**, review the saved assignments and separate unfilled roles, then **Print saved roster**. Your browser lets you choose a printer or save a PDF; canceling leaves the roster and any drafts unchanged. The browser Print command uses the same handoff, even when the on-screen review is collapsed.
+
+The handoff uses only saved data in this tab, never a selected-but-unapplied repair. Pending volunteer edits are labeled as excluded. Conflicting saved assignments remain as saved and are prominently labeled DRAFT and Needs review, not presented as a feasible repair. All times use the event-local date and 24-hour clock. IDs distinguish duplicate names or role titles.
+
+Print copies include names, role assignments, times and pins, but omit availability, capabilities, workload preferences and absence reasons. Review your browser destination and share copies carefully. Printing does not contact volunteers or confirm a saved file; it does not remove the exit warning. A PDF cannot be imported as an editable roster. Keep a JSON export for later edits. Page size and pagination depend on browser settings; review the print preview before use.
