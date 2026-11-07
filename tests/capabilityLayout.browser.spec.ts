@@ -1,0 +1,60 @@
+import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import type { RosterFileEnvelope } from '../src/domain/rosterFile';
+const sample=JSON.parse(await readFile('examples/one-day-roster.json','utf8')) as RosterFileEnvelope;
+const longCapability='W'.repeat(48);
+const unicodeCapability='語'.repeat(48);
+for(const width of [320,390,1280]) {
+  test(`supported long capabilities remain readable and editable at ${width}px`,async({page},testInfo)=>{
+    await page.setViewportSize({width,height:900});
+    const externalRequests:string[]=[];
+    page.on('request',request=>{const url=new URL(request.url());if(url.protocol.startsWith('http')&&!['127.0.0.1','localhost'].includes(url.hostname))externalRequests.push(request.url());});
+    await page.goto('./');
+    const input=structuredClone(sample);
+    const volunteer=input.roster.volunteers[0];
+    volunteer.capabilities.push(longCapability,unicodeCapability);
+    const target=input.roster.shifts.find(s=>s.volunteerId===volunteer.id)!;
+    target.requires.push(longCapability);
+    await page.getByLabel('Choose roster JSON file',{exact:true}).setInputFiles({name:'supported-capabilities.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(input))});
+    const dialog=page.getByRole('dialog',{name:'Replace the current roster?',exact:true});
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button',{name:'Import roster',exact:true}).click();
+    await expect(dialog).not.toBeVisible();
+    await page.locator(`#volunteer-summary-${volunteer.id}`).click();
+    const form=page.getByRole('form',{name:`Edit ${volunteer.name} constraints`,exact:true});
+    await page.getByText('Edit role requirements',{exact:true}).click();
+    await page.locator('.shift-editor select').selectOption(target.id);
+    const checkbox=form.getByRole('checkbox',{name:longCapability,exact:true});
+    const roleCheckbox=page.locator('.shift-editor').getByRole('checkbox',{name:longCapability,exact:true});
+    await expect(checkbox).toBeChecked();await expect(roleCheckbox).toBeChecked();
+    for(const control of [checkbox,form.getByRole('checkbox',{name:unicodeCapability,exact:true}),roleCheckbox]) {
+      const label=control.locator('..');
+      const box=await label.boundingBox();expect(box).not.toBeNull();
+      expect(box!.width).toBeLessThanOrEqual(width);expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width);
+      expect(await label.evaluate(element=>element.scrollWidth<=element.clientWidth+1)).toBe(true);
+      expect(await control.evaluate(element=>element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(13);
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await checkbox.focus();await page.keyboard.press('Space');
+    await expect(checkbox).not.toBeChecked();await expect(page.getByRole('button',{name:'Find feasible repairs',exact:true})).toBeDisabled();
+    await form.getByRole('button',{name:'Save constraints',exact:true}).click();
+    await expect(page.locator(`#volunteer-summary-${volunteer.id}`)).toBeFocused();
+    await page.getByRole('button',{name:'Find feasible repairs',exact:true}).click();
+    await expect(page.locator('.search-summary')).toContainText('Full coverage is impossible');
+    await page.getByRole('button',{name:'Apply partial repair',exact:true}).click();
+    await expect(page.locator('.notice')).toBeFocused();
+    await page.getByRole('button',{name:'Undo last change',exact:true}).click();
+    await expect(page.locator('.notice')).toBeFocused();
+    await page.getByRole('button',{name:'Undo last change',exact:true}).click();
+    await page.locator(`#volunteer-summary-${volunteer.id}`).click();
+    await expect(form.getByRole('checkbox',{name:longCapability,exact:true})).toBeChecked();
+    await expect(roleCheckbox).toBeChecked();
+    await roleCheckbox.focus();await page.keyboard.press('Space');await expect(roleCheckbox).not.toBeChecked();
+    await page.getByRole('button',{name:'Undo last change',exact:true}).click();await expect(roleCheckbox).toBeChecked();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    expect(externalRequests).toEqual([]);
+    await page.locator('#volunteer-summary-'+volunteer.id).click();
+    await form.getByRole('checkbox',{name:longCapability,exact:true}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:testInfo.outputPath(`capabilities-${width}.png`)});
+  });
+}

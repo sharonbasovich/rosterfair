@@ -15,9 +15,10 @@
 .ve-kind-soft { color: #78510d; }
 .ve-help { margin: 6px 0 12px; color: #536a62; font-size: 13px; line-height: 1.55; max-width: 70ch; }
 .ve-capabilities { display: flex; flex-wrap: wrap; gap: 8px 12px; }
-.ve-check { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--border, #d8e3de); border-radius: 8px; background: #fff; color: var(--ink, #183532); font-size: 14px; cursor: pointer; }
+.ve-check { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border, #d8e3de); border-radius: 8px; background: #fff; color: var(--ink, #183532); font-size: 14px; cursor: pointer; }
+.ve-check span { min-width: 0; overflow-wrap: anywhere; }
 .ve-check:has(input:checked) { background: #edf5ef; border-color: #abcaba; }
-.ve-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--action, #17634d); }
+.ve-check input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--action, #17634d); }
 .ve-windows { display: grid; gap: 12px; }
 .ve-window { display: grid; grid-template-columns: 80px minmax(100px, 144px) minmax(100px, 144px) auto; gap: 12px; align-items: end; max-width: 590px; }
 .ve-window-label { align-self: center; color: #536a62; font-size: 13px; padding-top: 18px; }
@@ -50,7 +51,7 @@
   .ve-window-label { grid-column: 1 / -1; padding-top: 0; }
   .ve-remove { padding-inline: 10px !important; }
   .ve-capabilities { gap: 8px; }
-  .ve-check { flex: 1 0 auto; }
+  .ve-check { flex: 1 1 auto; }
   .ve-actions { align-items: stretch; flex-direction: column; gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
