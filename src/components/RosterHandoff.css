@@ -1,0 +1,29 @@
+.roster-handoff{margin:0 0 28px;border:1px solid #c9d5ce;border-radius:12px;background:#fff;overflow-wrap:anywhere}
+.handoff-controls{padding:20px;display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px}
+.handoff-controls h2{font-size:18px;margin:0 0 6px;color:#173e32;letter-spacing:0}
+.handoff-controls p{font-size:13px;line-height:1.6;margin:0;color:#42544d}
+.handoff-controls>p{flex-basis:100%}.handoff-controls>div:first-child{flex:1 1 260px}
+.handoff-controls button{min-height:44px;white-space:normal}.handoff-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;font-size:12px;color:#42544d}
+.handoff-actions span{flex:1 1 240px}.handoff-sheet{display:none;padding:28px;color:#17241f;background:#fff;font-size:14px;line-height:1.5}
+.handoff-sheet.is-expanded{display:block;border-top:1px solid #c9d5ce}.handoff-sheet h2{font-size:26px;letter-spacing:0;line-height:1.2;margin:8px 0 12px}
+.handoff-sheet p{margin:10px 0}.handoff-eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.handoff-source{padding:12px 0;border-block:1px solid #64766e}.handoff-warning{border:2px solid #865618;padding:12px;color:#513300}
+.handoff-sheet table{width:100%;border-collapse:collapse;table-layout:fixed;margin:22px 0}.handoff-sheet caption{text-align:left;font-size:18px;font-weight:700;padding-bottom:8px}
+.handoff-sheet th,.handoff-sheet td{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid #a2b1a9;overflow-wrap:anywhere}
+.handoff-sheet thead th{font-size:12px;background:#eef2ef;color:#17241f}.handoff-sheet th:first-child{width:18%}.handoff-sheet th:last-child{width:16%}
+.handoff-sheet small{display:block;font-size:11px;font-weight:400;margin-top:4px}.handoff-time{font-variant-numeric:tabular-nums}
+.handoff-sheet footer{font-size:12px;border-top:1px solid #64766e;padding-top:12px}
+@media(max-width:600px){.handoff-controls,.handoff-sheet{padding:16px}.handoff-sheet{font-size:12px}.handoff-sheet h2{font-size:22px}.handoff-sheet th,.handoff-sheet td{padding:8px 4px}.handoff-sheet small{font-size:10px}.handoff-sheet th:first-child{width:22%}.handoff-sheet th:last-child{width:19%}}
+@media print{
+  @page{size:auto;margin:15mm}
+  html,body,#root,.app-shell,#main{display:block!important;background:white!important;color:black!important;margin:0!important;padding:0!important;min-width:0!important;min-height:0!important;height:auto!important;width:auto!important;max-width:none!important}
+  .app-shell>:not(#main),#main>:not(.roster-handoff),.handoff-controls,dialog,dialog::backdrop{display:none!important}
+  .roster-handoff{display:block!important;margin:0;border:0;border-radius:0;background:white}
+  .handoff-sheet,.handoff-sheet.is-expanded{display:block!important;border:0;padding:0;font:10pt/1.4 Arial,sans-serif;color:black}
+  .handoff-sheet h2{font-size:20pt}.handoff-sheet .handoff-eyebrow{font-size:9pt}.handoff-sheet header{break-inside:avoid}
+  .handoff-sheet table{margin:16pt 0;break-inside:auto}.handoff-sheet caption{font-size:13pt;break-after:avoid}
+  .handoff-sheet thead{display:table-header-group}.handoff-sheet tr{break-inside:avoid;page-break-inside:avoid}
+  .handoff-sheet th,.handoff-sheet td{padding:7pt 5pt}.handoff-sheet thead th{font-size:9pt;color:black;background:white;border-block:1pt solid black}
+  .handoff-sheet th:first-child{width:18%}.handoff-sheet th:last-child{width:16%}.handoff-sheet small{font-size:8pt}
+  .handoff-warning{color:black;border:1.5pt solid black;break-inside:avoid}.handoff-summary{break-inside:avoid}.handoff-sheet footer{font-size:8pt;break-inside:avoid}
+}

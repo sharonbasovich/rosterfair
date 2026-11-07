@@ -7,6 +7,7 @@ import { Schedule } from './components/Schedule';
 import { RepairPanel } from './components/RepairPanel';
 import { VolunteerEditor } from './components/VolunteerEditor';
 import { ShiftEditor } from './components/ShiftEditor';
+import { RosterHandoff } from './components/RosterHandoff';
 import { RosterFiles } from './components/RosterFiles';
 import { time } from './format';
 import { RepairPreview } from './components/RepairPreview';
@@ -143,6 +144,7 @@ export default function App() {
       <ol className="workflow" aria-label="Repair workflow"><li className="done"><span>1</span><a href="#inputs-heading">Review constraints</a></li><li className={open?'done':'current'}><span>2</span><a href="#schedule-heading">Record cancellation</a></li><li className={open?'current':''}><span>3</span><a href="#repair-heading">Compare & apply</a></li></ol>
       <div className="notice" role="status" aria-live="polite" ref={noticeRef} tabIndex={-1}><span className={`status-dot ${open?'amber':''}`}/>{notice}</div>
       <RosterFiles key={dirtyVolunteers.length > 0 ? 'pending-edits' : 'saved-inputs'} hasPendingEdits={dirtyVolunteers.length > 0} onReviewPending={reviewPending} roster={roster} onImport={importRoster} onNotice={setNotice} warnOnExit={warnOnExit}/>
+      <RosterHandoff roster={roster} hasPendingEdits={dirtyVolunteers.length > 0}/>
       <div className="workspace-grid"><div className="roster-column">
         {fixture?<div className="demo-action"><div><strong>{fixtureId==='pin-conflict'?'Some commitments contradict each other.':assignedAfterChange?'The roster is assigned again.':'A volunteer can no longer make it.'}</strong><p>{fixtureId==='pin-conflict'?'Find repairs to inspect the pinned conflict. Unpin a conflicting assignment to resolve it.':assignedAfterChange?'Undo to compare another repair, reset the demo, or cancel a specific assignment below.':`Record the cancellation, then find a feasible repair.`}</p></div>{fixtureId!=='pin-conflict'&&<button className="secondary" disabled={assignedAfterChange||roster.absences.some(a=>a.reason===`Cancelled ${roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.title}`)||!roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.volunteerId||Boolean(roster.shifts.find(s=>s.id===fixture.cancelShiftId)?.pinned)} onClick={()=>edit(cancelAssignment(session,fixture.cancelShiftId),'Cancellation recorded, with an absence for that time window. Find repairs to compare your options.',true)}>Record demo cancellation<Icon name="arrow"/></button>}</div>:<div className="demo-action"><div><strong>Your roster is ready to inspect.</strong><p>{roster.date} · Cancel a specific assignment below, or find repairs for open or conflicting slots.</p></div></div>}
         {result?.options[selected]&&<RepairPreview roster={roster} option={result.options[selected]} options={result.options} onSelect={setSelected} label={String.fromCharCode(65+selected)}/>}
